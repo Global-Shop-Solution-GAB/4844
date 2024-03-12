@@ -1,0 +1,387 @@
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+'DRH 2/13/2018
+'Program connects to FTP site and downloads the excel containing the orders. Uses a BAT file to get, then saves to database info from the excel
+'need to delete file from FTP site once the file is transferred
+
+'GSS Connection
+F.ODBC.Connection!con.OpenConnection(v.Ambient.PDSN,v.Ambient.PUser,v.Ambient.PPass) 
+Function.Intrinsic.Control.CallSub(IsRunning)
+'this allows Brian to try and upload a modified orders.csv that has failed
+F.Intrinsic.Control.If(V.Caller.Switches,<>,"M")
+	F.Intrinsic.Control.CallSub(Get_File)
+F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.CallSub(Save_Data)
+
+F.Intrinsic.Control.CallSub(Customer_Match)
+
+
+F.Intrinsic.Control.CallSub(CustTax)
+F.Intrinsic.Control.CallSub(SaveNewEmail)
+F.Intrinsic.Control.CallSub(Transfer)
+
+F.Intrinsic.Control.CallSub(Unload)
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Save_Excel: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.IsRunning.Start
+F.Intrinsic.Control.SetErrorHandler("Sub_Err")
+F.Intrinsic.Control.ClearErrors
+V.Local.sError.Declare(String)
+
+V.Local.sFile.Declare(String)
+V.Local.bExists.Declare(Boolean)
+V.Local.iPID.Declare(Long)
+V.Local.sCurrentPIDProcess.Declare(String)
+
+V.Local.iPID.Set(V.Ambient.PID)
+
+'check to see if program is already running. First check for file
+F.Intrinsic.String.Build("{0}\WEB_ORDERS\IS_RUNNING\Running_{1}.txt",V.Caller.FilesDir,"Y",V.Local.sFile)
+F.Intrinsic.File.Exists(V.Local.sFile,V.Local.bExists)
+F.Intrinsic.Control.If(V.Local.bExists,=,False)
+	'Create Program Status file to let it know its running
+	F.Intrinsic.File.String2File(V.Local.sFile,V.Local.iPID.String)
+Function.Intrinsic.Control.Else
+ 'then the file exists: get the PID from the file to see if the process is still running
+	F.Intrinsic.File.File2String(V.Local.sFile, V.Local.sCurrentPIDProcess)
+	'sometimes the file exists but is empty. it still returns true. If the file is empty, set the exists flag to false so ie can delete and recreate the file down the line.
+	f.Intrinsic.Control.If(v.Local.sCurrentPIDProcess.Trim,=,"")
+		v.Local.bExists.Set(FALSE)
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Task.PIDRunning(V.Local.sCurrentPIDProcess,V.Local.bExists)
+	F.Intrinsic.Control.EndIf
+	
+	Function.Intrinsic.Control.If(V.Local.bExists, =, TRUE)
+		'the the program is running- don't start new process
+		Function.Intrinsic.Control.End
+
+	Function.Intrinsic.Control.Else
+		'the program has stopped, but did not delete the file. Delete the file and create a new file for current run
+		Function.Intrinsic.File.DeleteFile(V.Local.sFile)
+		F.Intrinsic.File.String2File(V.Local.sFile,V.Local.iPID.String)
+	Function.Intrinsic.Control.EndIf
+Function.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.Label("Sub_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: Project",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	Function.Intrinsic.Control.CallSub(Unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.IsRunning.End
+
+Program.Sub.Get_File.Start
+F.Intrinsic.Control.SetErrorHandler("Sub_Err")
+F.Intrinsic.Control.ClearErrors
+V.Local.sError.Declare(String)
+
+V.Local.sTemp.Declare(String)
+F.Intrinsic.String.Build("{0}\WEB_ORDERS\Excel\getFile.bat", V.Caller.FilesDir, V.Local.sTemp)
+F.Intrinsic.Task.LaunchSync( V.Local.sTemp)
+
+F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.Label("Sub_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: Project",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	Function.Intrinsic.Control.CallSub(Unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.Get_File.End
+
+Program.Sub.Save_Data.Start
+F.Intrinsic.Control.SetErrorHandler("Sub_Err")
+F.Intrinsic.Control.ClearErrors
+V.Local.sError.Declare(String)
+
+'this will get the excel file and save it to the database
+
+V.Local.iC.Declare(Long)
+V.Local.sFileExport.Declare(String)
+V.Local.sFileDate.Declare(String)
+V.Local.sFileTime.Declare(String)
+V.Local.sDataToSave.Declare(String)
+V.Local..BulkDeclareString(sFile, sData, sTypes, sFields, sTemp)
+V.Local.bExists.Declare(Boolean)
+F.Intrinsic.String.Build("{0}\WEB_ORDERS\Excel\orders.csv", V.Caller.FilesDir, V.Local.sFile)
+'check if file exists
+F.Intrinsic.File.Exists(V.Local.sFile, V.Local.bExists)
+'if there is not a file- exit program
+F.Intrinsic.Control.If(V.Local.bExists, =, False)
+	F.Intrinsic.Control.CallSub(UnLoad)
+F.Intrinsic.Control.EndIf
+
+'need excel on server
+F.Automation.MSExcel.ReadSpreadsheet(V.Local.sFile, V.Local.sData)
+
+'save the file
+F.Intrinsic.File.File2String(V.Local.sFile, V.Local.sDataToSave)
+Function.Intrinsic.String.Format(V.Ambient.Date, "MMDDYY",  V.Local.sFileDate)
+Function.Intrinsic.String.Format(V.Ambient.Time, "HhNnSsam/pm",  V.Local.sFileTime)
+F.Intrinsic.String.Build("{0}\WEB_ORDERS\Orders_History\orders_{1}_{2}.csv",V.Caller.FilesDir, V.Local.sFileDate,V.Local.sFileTime,V.Local.sFileExport)
+F.Intrinsic.File.String2File(V.Local.sFileExport,V.Local.sDataToSave)
+
+
+'F.Intrinsic.String.Replace(V.Local.sData, "#", "", V.Local.sData)
+F.Intrinsic.String.Replace(V.Local.sData, "$!$", "@*@", V.Local.sData)
+F.Intrinsic.String.Replace(V.Local.sData, "$", "", V.Local.sData)
+F.Intrinsic.String.Replace(V.Local.sData, "'", "", V.Local.sData)
+F.Intrinsic.String.Replace(V.Local.sData, "12:00:00 AM", "", V.Local.sData)
+'F.Intrinsic.String.Replace(V.Local.sData, "+", "", V.Local.sData)
+
+V.Local.sTypes.Set("String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String*!*String")
+V.Local.sFields.Set("CustomerID*!*Order_Core*!*CouponCode*!*GiftCertificateCode*!*BillingCompany*!*bFirstName*!*bLastName*!*bAddress1*!*bAddress2*!*bCity*!*bState*!*bZip*!*bCountry*!*Email*!*ShippingEmail*!*Phone*!*Fax*!*ShippingCompany*!*SFirstName*!*SLastName*!*SAddress1*!*SAddress2*!*SCity*!*SState*!*SZip*!*SCountry*!*CreditCardType*!*Subtotal*!*HazMatFee*!*Discount*!*SH*!*Tax*!*StateTax*!*CountyTax*!*Total*!*GiftCertificate*!*GrandTotal*!*OrderDate*!*ShipVia*!*Weight*!*ShipDate*!*Status*!*TransactionNumber*!*IPAddress*!*Location*!*ShipDate2*!*CustomerGroup*!*Keyword*!*Howyouheardaboutus*!*Memo*!*CreditCardType1*!*Fraud*!*SKU*!*Qty*!*ItemName*!*Amount*!*CarrierCodes*!*PercentDiscount*!*OrderComments")
+F.Data.DataTable.CreateFromString("T", V.Local.sData, V.Local.sFields , V.Local.sTypes,"*!*", "@*@", TRUE)
+
+'delete columns
+F.Data.DataTable.RemoveColumn("T", "CustomerID")
+F.Data.DataTable.RemoveColumn("T", "CouponCode")
+F.Data.DataTable.RemoveColumn("T", "GiftCertificateCode")
+F.Data.DataTable.RemoveColumn("T", "ShippingEmail")
+F.Data.DataTable.RemoveColumn("T", "Fax")
+F.Data.DataTable.RemoveColumn("T", "CreditCardType1")
+F.Data.DataTable.RemoveColumn("T", "GiftCertificate")
+F.Data.DataTable.RemoveColumn("T", "Weight")
+F.Data.DataTable.RemoveColumn("T", "ShipDate")
+F.Data.DataTable.RemoveColumn("T", "Status")
+F.Data.DataTable.RemoveColumn("T", "TransactionNumber")
+F.Data.DataTable.RemoveColumn("T", "IPAddress")
+F.Data.DataTable.RemoveColumn("T", "Location")
+F.Data.DataTable.RemoveColumn("T", "ShipDate2")
+F.Data.DataTable.RemoveColumn("T", "CustomerGroup")
+F.Data.DataTable.RemoveColumn("T", "Keyword")
+F.Data.DataTable.RemoveColumn("T", "Howyouheardaboutus")
+F.Data.DataTable.RemoveColumn("T", "Memo")
+F.Data.DataTable.RemoveColumn("T", "Tax")
+
+
+'for debugging
+'F.Data.DataTable.RemoveColumn("T", "Subtotal")
+'F.Data.DataTable.RemoveColumn("T", "HazMatFee")
+'F.Data.DataTable.RemoveColumn("T", "SH")
+'F.Data.DataTable.RemoveColumn("T", "StateTax")
+'F.Data.DataTable.RemoveColumn("T", "Discount")
+'F.Data.DataTable.RemoveColumn("T", "Amount")
+'F.Data.DataTable.RemoveColumn("T", "CountyTax")
+'F.Data.DataTable.RemoveColumn("T", "Total")
+'F.Data.DataTable.RemoveColumn("T", "GrandTotal")
+'F.Data.DataTable.RemoveColumn("T", "PercentDiscount")
+'F.Data.DataTable.RemoveColumn("T", "QTY")
+''F.Data.DataTable.RemoveColumn("T", "ShipVia")
+''F.Data.DataTable.RemoveColumn("T", "Fraud")
+''F.Data.DataTable.RemoveColumn("T", "SKU")
+''F.Data.DataTable.RemoveColumn("T", "ItemName")
+''F.Data.DataTable.RemoveColumn("T", "CarrierCodes")
+''F.Data.DataTable.RemoveColumn("T", "SCountry")
+''F.Data.DataTable.RemoveColumn("T", "CreditCardType")
+''F.Data.DataTable.RemoveColumn("T", "OrderDate")
+''F.Data.DataTable.RemoveColumn("T", "OrderComments")
+''F.Data.DataTable.RemoveColumn("T", "Order_Core")
+''F.Data.DataTable.RemoveColumn("T", "BillingCompany")
+''F.Data.DataTable.RemoveColumn("T", "bFirstName")
+''F.Data.DataTable.RemoveColumn("T", "bLastName")
+''F.Data.DataTable.RemoveColumn("T", "bAddress1")
+'F.Data.DataTable.RemoveColumn("T", "bAddress2")
+''F.Data.DataTable.RemoveColumn("T", "bCity")
+''F.Data.DataTable.RemoveColumn("T", "bState")
+''F.Data.DataTable.RemoveColumn("T", "bZip")
+''F.Data.DataTable.RemoveColumn("T", "bCountry")
+''F.Data.DataTable.RemoveColumn("T", "Email")
+''F.Data.DataTable.RemoveColumn("T", "Phone")
+''F.Data.DataTable.RemoveColumn("T", "ShippingCompany")
+''F.Data.DataTable.RemoveColumn("T", "SFirstName")
+''F.Data.DataTable.RemoveColumn("T", "SLastName")
+''F.Data.DataTable.RemoveColumn("T", "SAddress1")
+''F.Data.DataTable.RemoveColumn("T", "SAddress2")
+''F.Data.DataTable.RemoveColumn("T", "SCity")
+''F.Data.DataTable.RemoveColumn("T", "SState")
+''F.Data.DataTable.RemoveColumn("T", "SZip")
+
+'delete first row
+F.Data.DataTable.DeleteRow("T", 0)
+'save to database
+F.Data.DataTable.SaveToDB("T", "con", "GCG_4844_PRE_Import", "", 128)
+F.Data.DataTable.Close("T")
+
+'update where Billing Company = ''
+F.Data.DataTable.CreateFromSQL("N", "con", "Select Key_ID, rTrim(BillingCompany) as BillingCompany1,rTrim( bFirstName) as bFirstName, rTrim(bLastName) As bLastName  From GCG_4844_PRE_Import Where BillingCompany = '' ")
+F.Data.DataTable.AddExpressionColumn("N", "BillingCompany", "String", "[bFirstName]+' '+[bLastName]")
+Function.Data.DataTable.SaveToDB("N", "con", "GCG_4844_PRE_Import", "Key_ID", 256, "Key_ID@!@Key_ID*!*BillingCompany@!@BillingCompany")
+F.Data.DataTable.Close("N")
+'update where Shipping Company = ''
+F.Data.DataTable.CreateFromSQL("N", "con", "Select Key_ID, rTrim(ShippingCompany) as ShippingCompany1,rTrim( sFirstName) as sFirstName, rTrim(sLastName) As sLastName  From GCG_4844_PRE_Import Where ShippingCompany = '' ")
+F.Data.DataTable.AddExpressionColumn("N", "ShippingCompany", "String", "[sFirstName]+' '+[sLastName]")
+Function.Data.DataTable.SaveToDB("N", "con", "GCG_4844_PRE_Import", "Key_ID", 256, "Key_ID@!@Key_ID*!*ShippingCompany@!@ShippingCompany")
+F.Data.DataTable.Close("N")
+
+'pad zip codes: 
+F.Data.DataTable.CreateFromSQL("Temp", "con", "Select   Key_ID, rTrim(bZip) as bZipper, rTrim(sZip) as sZipper From GCG_4844_PRE_Import")
+F.Data.DataTable.AddExpressionColumn("Temp", "bZip", "String", "IIF(LEN(bZipper) = 5, [bZipper], IIF(LEN(bZipper) = 4, '0'+[bZipper], IIF(LEN(bZipper) = 3, '00'+[bZipper] , IIF(LEN(bZipper) = 2, '000'+[bZipper] ,  IIF(LEN(bZipper) = 1, '0000'+[bZipper]   , [sZipper])  )) )  )")
+F.Data.DataTable.AddExpressionColumn("Temp", "sZip", "String", "IIF(LEN(sZipper) = 5, [sZipper], IIF(LEN(sZipper) = 4, '0'+[sZipper], IIF(LEN(sZipper) = 3, '00'+[sZipper] , IIF(LEN(sZipper) = 2, '000'+[sZipper] ,  IIF(LEN(sZipper) = 1, '0000'+[sZipper]   , [sZipper])  )) )  )")
+Function.Data.DataTable.SaveToDB("Temp", "con", "GCG_4844_PRE_Import", "Key_ID", 2, "Key_ID@!@Key_ID*!*sZip@!@sZip*!*bZip@!@bZip")
+F.Data.DataTable.Close("Temp")
+
+'delete excel file
+F.Intrinsic.File.DeleteFile(V.Local.sFile)
+
+F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.Label("Sub_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: Project",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	Function.Intrinsic.Control.CallSub(Unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.Save_Data.End
+
+Program.Sub.Customer_Match.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+V.Local.iC.Declare(Long)
+V.Local..BulkDeclareString(ssql, sRet)
+
+'check for missing customers and populate if match found
+F.Data.DataTable.CreateFromSQL("D", "con", "Select Distinct ORDER_Core, UPPER(rTrim(bFirstName)+' '+rTrim(bLastName) ) as Name, UPPER(rTrim(Email)) as Email, rTrim(Phone) as Phone, '' as Name2, '' as Email2, '' as Phone2 From GCG_4844_PRE_Import Where Customer is Null ")
+'fill from customer master
+
+F.Data.Dictionary.CreateFromSQL("dict", "con", "Select  LTrim(rTrim(Telephone)) as Phone, LTrim(rTrim(Telephone)) as Phone2 From V_CUSTOMER_MASTER")
+F.Data.Dictionary.SetDefaultReturn("dict", "")
+F.Data.DataTable.FillFromDictionary("D", "dict", "Phone", "Phone2")
+F.Data.Dictionary.Close("dict")
+
+F.Data.Dictionary.CreateFromSQL("dict", "con", "Select  UPPER(rTrim(Email))  as Email,  UPPER(rTrim(Email)) as Email2 From V_CUSTOMER_SALES Order By Customer")
+F.Data.Dictionary.SetDefaultReturn("dict", "")
+F.Data.DataTable.FillFromDictionary("D", "dict", "Email", "Email2")
+F.Data.Dictionary.Close("dict")
+
+F.Data.Dictionary.CreateFromSQL("dict", "con", "Select  UPPER(rTrim(Name_Customer)) as Name, UPPER(rTrim(Name_Customer)) as Name2 From V_CUSTOMER_MASTER order by customer")
+F.Data.Dictionary.SetDefaultReturn("dict", "")
+F.Data.DataTable.FillFromDictionary("D", "dict", "Name", "Name2")
+F.Data.Dictionary.Close("dict")
+
+F.Intrinsic.Control.For(V.Local.iC, 0, V.DataTable.D.RowCount--, 1)
+	
+	'try to find a match
+	F.Intrinsic.Control.If(V.DataTable.D(V.Local.iC).Phone2!FieldValTrim, <>, "", "And", V.DataTable.D(V.Local.iC).Email2!FieldValTrim, <>, "")
+		F.Intrinsic.String.Build("Select Top 1 Customer From V_CUSTOMER_MASTER Where lTrim(rTRim(Telephone)) = '{0}'", V.DataTable.D(V.Local.iC).Phone2!FieldValTrim, V.Local.ssql)
+		F.ODBC.Connection!con.ExecuteAndReturn(V.Local.ssql, V.Local.sRet)
+		F.Intrinsic.String.Build("Update GCG_4844_PRE_Import Set Customer = '{0}' Where Phone = '{1}'", V.Local.sRet, V.DataTable.D(V.Local.iC).Phone2!FieldValTrim, V.Local.ssql)
+		F.ODBC.Connection!con.Execute(V.Local.ssql)
+	F.Intrinsic.Control.ElseIf(V.DataTable.D(V.Local.iC).Phone2!FieldValTrim, <>, "", "And", V.DataTable.D(V.Local.iC).Name2!FieldValTrim, <>, "")
+		F.Intrinsic.String.Build("Select Top 1 Customer From V_CUSTOMER_MASTER Where lTrim(rTRim(Telephone)) = '{0}'", V.DataTable.D(V.Local.iC).Phone2!FieldValTrim, V.Local.ssql)
+		F.ODBC.Connection!con.ExecuteAndReturn(V.Local.ssql, V.Local.sRet)
+		F.Intrinsic.String.Build("Update GCG_4844_PRE_Import Set Customer = '{0}' Where Phone = '{1}'", V.Local.sRet, V.DataTable.D(V.Local.iC).Phone2!FieldValTrim, V.Local.ssql)
+		F.ODBC.Connection!con.Execute(V.Local.ssql)
+	F.Intrinsic.Control.ElseIf(V.DataTable.D(V.Local.iC).Email2!FieldValTrim, <>, "", "And", V.DataTable.D(V.Local.iC).Name2!FieldValTrim, <>, "")
+		F.Intrinsic.String.Build("Select Top 1 Customer From V_CUSTOMER_MASTER Where lTrim(rTRim(Name_Customer)) = '{0}'", V.DataTable.D(V.Local.iC).Name2!FieldValTrim, V.Local.ssql)
+		F.ODBC.Connection!con.ExecuteAndReturn(V.Local.ssql, V.Local.sRet)
+		F.Intrinsic.String.Build("Update GCG_4844_PRE_Import Set Customer = '{0}' Where (rTrim(bFirstName)+' '+rTrim(bLastName) ) = '{1}'", V.Local.sRet, V.DataTable.D(V.Local.iC).Name2!FieldValTrim, V.Local.ssql)
+		F.ODBC.Connection!con.Execute(V.Local.ssql)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Next(V.Local.iC)
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Save_Excel: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.Customer_Match.End
+
+Program.Sub.UnLoad.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+F.ODBC.Connection!con.Close
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Save_Excel: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)	
+    F.Intrinsic.Control.End
+
+F.Intrinsic.Control.EndTry
+Program.Sub.UnLoad.End
+
+Program.Sub.CustTax.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+'get the tax TAX_SALES_EX_NO 
+
+F.Data.DataTable.CreateFromSQL("D", "con", "Select  KEY_ID, rTrim(Customer) as Customer, rTrim(TAX_SALES_EX_NO) As  TAX_SALES_EX_NO  From GCG_4844_PRE_Import Where Customer <> '' ")
+
+F.Data.Dictionary.CreateFromSQL("dict", "con", "Select rTrim(CUST)  as Customer, rTrim(TAX_SALES_EX_NO) as TAX_SALES_EX_NO from CUSTOMER_TAX Where TAX_SALES_EX_NO <> '' ", 2)
+'F.Intrinsic.Debug.SetLA("TAX_SALES_EX_NO Dict")
+'F.Intrinsic.UI.Sleep(120)
+F.Data.Dictionary.SetDefaultReturn("dict", "")
+F.Data.DataTable.FillFromDictionary("D", "dict", "Customer", "TAX_SALES_EX_NO")
+F.Data.Dictionary.Close("dict")
+
+
+F.Data.DataTable.SaveToDB("D", "con", "GCG_4844_PRE_Import", "KEY_ID", 2, "KEY_ID@!@KEY_ID*!*Customer@!@Customer*!*TAX_SALES_EX_NO@!@TAX_SALES_EX_NO")
+
+F.Data.DataTable.Close("D")
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Save_Excel: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)	
+    Function.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.CustTax.End
+
+Program.Sub.SaveNewEmail.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+V.Local.iC.Declare(Long)
+V.Local.ssql.Declare(String)
+
+F.Data.DataTable.CreateFromSQL("C", "con", "Select  Customer, Email  From GCG_4844_PRE_Import Where Customer <> '' And Email <> '' ")
+
+F.Intrinsic.Control.For(V.Local.iC, 0,V.DataTable.C.RowCount--, 1)
+	F.Intrinsic.String.Build("Update CUSTOMER_SALES Set Email = '{0}' Where Customer = '{1}' And REC = '2' ", V.DataTable.C(V.Local.iC).Email!FieldValTrim,V.DataTable.C(V.Local.iC).Customer!FieldValTrim , V.Local.ssql)
+	F.ODBC.Connection!con.Execute(V.Local.ssql)
+F.Intrinsic.Control.Next(V.Local.iC)
+F.Data.DataTable.Close("C")
+
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Save_Excel: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)	
+    Function.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.SaveNewEmail.End
+
+Program.Sub.Transfer.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+F.Data.DataTable.CreateFromSQL("D", "con", "Select  *  From GCG_4844_PRE_Import")
+
+F.Data.DataTable.SaveToDB("D", "con", "GCG_4844_Web_Import", "KEY_ID", 128)
+
+Function.ODBC.Connection!con.Execute("Delete From GCG_4844_PRE_Import")
+
+F.Data.DataTable.Close("D")
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Save_Excel: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)	
+    Function.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.Transfer.End
+
+Program.Sub.Comments.Start
+${$0$}$$}$$}$12:00:00 AM$}$False
+Program.Sub.Comments.End
