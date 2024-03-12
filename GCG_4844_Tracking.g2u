@@ -1,0 +1,153 @@
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+'DRH 2/13/2018
+'Program creates an excel then connects to FTP site and uploads the excel containing the orders/tracking. Uses a BAT file to put
+'GCG_4844_Tracking
+'7/19/2018 this has been moved to task manager
+
+'GSS Connection
+F.ODBC.Connection!con.OpenConnection(v.Ambient.PDSN,v.Ambient.PUser,v.Ambient.PPass) 
+F.Intrinsic.Control.CallSub(IsRunning)
+F.Intrinsic.Control.CallSub(Create_File)
+Function.Intrinsic.Control.CallSub(Unload)
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Tracking: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndTry
+
+Program.Sub.Main.End
+
+Program.Sub.Create_File.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+V.Local..BulkDeclareString(sRet, sFilePath, sTemp, sBatFilePath, ssql)
+V.Local.iC.Declare(Long)
+V.Local.bExists.Declare(Boolean, False)
+
+'get files from web site first- check if exists
+'bat file path
+
+F.Intrinsic.String.Build("{0}\WEB_ORDERS\Excel\getTrackingFile.bat", V.Caller.FilesDir,V.Local.sBatFilePath)
+
+'get and delete from on the FTP site
+F.Intrinsic.Task.LaunchSync( V.Local.sBatFilePath)
+ 'file path
+ F.Intrinsic.String.Build("{0}\WEB_ORDERS\Excel\Tracking.csv", V.Caller.FilesDir,  V.Local.sFilePath)
+
+ 'check if file exists
+ F.Intrinsic.File.Exists(V.Local.sFilePath, V.Local.bExists)
+ F.Intrinsic.Control.If(V.Local.bExists, =, True)
+ 	 F.Intrinsic.File.File2String(V.Local.sFilePath,V.Local.sTemp)
+ F.Intrinsic.Control.EndIf
+
+'everything in one table
+F.Data.DataTable.CreateFromSQL("TR", "con", "Select rTrim(PO_Number) As PO_Number, rTrim(Tracking) as Tracking  From GCG_4844_Tracking")
+' save to custom history table
+F.Data.DataTable.SaveToDB("TR", "con", " GCG_4844_TrackHist","", 128 )
+F.Intrinsic.Control.If(V.DataTable.TR.RowCount, >, 0)
+	F.Data.DataView.Create("TR", "TR_V")
+	F.Data.DataView.ToString("TR", "TR_V", ",", V.Ambient.NewLine, V.Local.sRet)
+	'then add the data from the FTP site
+	F.Intrinsic.String.Build("{0}{1}{2}", V.Local.sRet, V.Ambient.NewLine, V.Local.sTemp, V.Local.sRet)
+F.Intrinsic.Control.ElseIf(V.Local.bExists, =, True)
+	V.Local.sRet.Set(V.Local.sTemp)
+F.Intrinsic.Control.Else
+	Function.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndIf
+
+'sRet is the string
+F.Intrinsic.File.String2File(V.Local.sFilePath, V.Local.sRet)
+
+
+'bat file path
+F.Intrinsic.String.Build("{0}\WEB_ORDERS\Excel\putFile.bat", V.Caller.FilesDir,V.Local.sBatFilePath)
+
+'put it on the FTP site
+F.Intrinsic.Task.LaunchSync( V.Local.sBatFilePath)
+
+'remove tracking file
+F.Intrinsic.File.DeleteFile(V.Local.sFilePath)
+
+'8/16/2018 DRH Save to Shipment Header Where Order_Rec = 'A' and order_history
+F.Intrinsic.Control.For(V.Local.iC, 0, V.DataTable.TR.RowCount--, 1)
+	F.Intrinsic.String.Build("Update SHIPMENT_HEADER Set TRACKING_NO = '{0}' Where CUSTOMER_PO = '{1}' And ORDER_REC = '  A' ", V.DataTable.TR(V.Local.iC).Tracking!FieldValTrim,V.DataTable.TR(V.Local.iC).PO_Number!FieldValTrim, V.Local.ssql )
+	F.ODBC.Connection!con.Execute(V.Local.ssql)
+	F.Intrinsic.String.Build("Update ORDER_HIST_HEAD Set TRACKING_NO = '{0}' Where CUSTOMER_PO = '{1}'", V.DataTable.TR(V.Local.iC).Tracking!FieldValTrim,V.DataTable.TR(V.Local.iC).PO_Number!FieldValTrim, V.Local.ssql )
+	F.ODBC.Connection!con.Execute(V.Local.ssql)
+F.Intrinsic.Control.Next(V.Local.iC)
+
+' delete from custom table
+F.Data.DataTable.DeleteRow("TR")
+F.Data.DataTable.SaveToDB("TR", "con", " GCG_4844_Tracking","PO_Number*!*Tracking" )
+F.Data.DataTable.Close("TR")
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Tracking: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)	
+    Function.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.Create_File.End
+
+Program.Sub.IsRunning.Start
+F.Intrinsic.Control.Try
+
+V.Local..BulkDeclareString(sError, sFile, sCurrentPIDProcess)
+V.Local.bExists.Declare(Boolean)
+
+'check to see if program is already running. First check for file
+F.Intrinsic.String.Build("{0}\\WEB_ORDERS\IS_RUNNING\Running_Tracking.txt",V.Caller.FilesDir,V.Local.sFile)
+F.Intrinsic.File.Exists(V.Local.sFile,V.Local.bExists)
+F.Intrinsic.Control.If(V.Local.bExists,=,False)
+'Create Program Status file to let it know its running
+	F.Intrinsic.File.String2File(V.Local.sFile,V.Ambient.PID.String)
+Function.Intrinsic.Control.Else
+ 'then the file exists: get the PID from the file to see if the process is still running
+	F.Intrinsic.File.File2String(V.Local.sFile, V.Local.sCurrentPIDProcess)
+	F.Intrinsic.Task.PIDRunning(V.Local.sCurrentPIDProcess,V.Local.bExists)
+	Function.Intrinsic.Control.If(V.Local.bExists)
+		'the the program is running- don't start new process
+		Function.Intrinsic.Control.End
+
+	Function.Intrinsic.Control.Else
+		'the program has stopped, but did not delete the file. Delete the file and create a new file for current run
+		Function.Intrinsic.File.DeleteFile(V.Local.sFile)
+		F.Intrinsic.File.String2File(V.Local.sFile,V.Ambient.PID.String)
+	Function.Intrinsic.Control.EndIf
+Function.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End 
+F.Intrinsic.Control.EndTry
+Program.Sub.IsRunning.End
+
+Program.Sub.Unload.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+V.Local.sFile.Declare(String)
+
+'path where file exists
+F.Intrinsic.String.Build("{0}\\WEB_ORDERS\IS_RUNNING\Running_Tracking.txt",V.Caller.FilesDir,V.Local.sFile)
+'delete file for the next run
+Function.Intrinsic.File.DeleteFile(V.Local.sFile)
+
+F.ODBC.Connection!con.Close
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Tracking: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+
+Program.Sub.Unload.End
