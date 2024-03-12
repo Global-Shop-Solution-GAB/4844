@@ -1,0 +1,1416 @@
+Program.Sub.ScreenSU.Start
+Gui.Form..Create
+Gui.Form..Caption("Web Importer Orders")
+Gui.Form..Size(20850,11055)
+Gui.Form..MinX(0)
+Gui.Form..MinY(0)
+Gui.Form..Position(0,0)
+Gui.Form..BackColor(-2147483633)
+Gui.Form..MousePointer(0)
+Gui.Form..Event(UnLoad,Form_UnLoad)
+Gui.Form..Sizeable(False)
+Gui.Form.GsGrid.Create(GsGridControl)
+Gui.Form.GsGrid.Size(20595,9045)
+Gui.Form.GsGrid.Position(60,1440)
+Gui.Form.GsGrid.Event(RowCellClick,GsGrid_RowCellClick)
+Gui.Form.GsGrid.Event(CellValueChanged,GsGrid_CellValueChanged)
+Gui.Form.GsGrid.Anchor(15)
+Gui.Form.cmdCreateOrder.Create(Button)
+Gui.Form.cmdCreateOrder.Size(1695,375)
+Gui.Form.cmdCreateOrder.Position(210,315)
+Gui.Form.cmdCreateOrder.Caption("Create Orders")
+Gui.Form.cmdCreateOrder.Event(Click,cmdCreateOrder_Click)
+Gui.Form.picGSSLOGO.Create(PictureBox)
+Gui.Form.picGSSLOGO.Size(4125,960)
+Gui.Form.picGSSLOGO.Position(7905,60)
+Gui.Form.cmdDelete.Create(Button)
+Gui.Form.cmdDelete.Size(1995,375)
+Gui.Form.cmdDelete.Position(18300,810)
+Gui.Form.cmdDelete.Caption("Delete Selected")
+Gui.Form.cmdDelete.Event(Click,cmdDelete_Click)
+Gui.Form.cmdRefresh.Create(Button)
+Gui.Form.cmdRefresh.Size(855,375)
+Gui.Form.cmdRefresh.Position(600,915)
+Gui.Form.cmdRefresh.Caption("Refresh")
+Gui.Form.cmdRefresh.Event(Click,cmdRefresh_Click)
+Gui.Form2..Create
+Gui.Form2..Caption("Customer")
+Gui.Form2..Size(3930,3210)
+Gui.Form2..MinX(0)
+Gui.Form2..MinY(0)
+Gui.Form2..Position(0,0)
+Gui.Form2..BackColor(-2147483633)
+Gui.Form2..MousePointer(0)
+Gui.Form2..Event(UnLoad,Form2_UnLoad)
+Gui.Form2.cmdCreateCustomer.Create(Button)
+Gui.Form2.cmdCreateCustomer.Size(2895,375)
+Gui.Form2.cmdCreateCustomer.Position(255,1665)
+Gui.Form2.cmdCreateCustomer.Caption("Create New Customer")
+Gui.Form2.cmdCreateCustomer.FontSize(10)
+Gui.Form2.cmdCreateCustomer.Event(Click,cmdCreateCustomer_Click)
+Gui.Form2.cmdCustBrwsr.Create(Button)
+Gui.Form2.cmdCustBrwsr.Size(675,375)
+Gui.Form2.cmdCustBrwsr.Position(2385,1020)
+Gui.Form2.cmdCustBrwsr.Caption("^")
+Gui.Form2.cmdCustBrwsr.Event(Click,cmdCustBrwsr_Click)
+Gui.Form2.lbl1.Create(Label,"Select Customer:",True,2055,255,0,240,1125,True,0,"Arial",10,-2147483633,0)
+Gui.Form2.cmdOpenCust.Create(Button)
+Gui.Form2.cmdOpenCust.Size(2880,375)
+Gui.Form2.cmdOpenCust.Position(255,375)
+Gui.Form2.cmdOpenCust.Caption("Open Customer")
+Gui.Form2.cmdOpenCust.FontSize(10)
+Gui.Form2.cmdOpenCust.Event(Click,cmdOpenCust_Click)
+Gui.Form3..Create
+Gui.Form3..Caption("Select Customer")
+Gui.Form3..Size(13455,7575)
+Gui.Form3..MinX(0)
+Gui.Form3..MinY(0)
+Gui.Form3..Position(0,0)
+Gui.Form3..BackColor(-2147483633)
+Gui.Form3..MousePointer(0)
+Gui.Form3..Event(UnLoad,Form3_UnLoad)
+Gui.Form3.GsGridCust.Create(GsGridControl)
+Gui.Form3.GsGridCust.Size(13215,6885)
+Gui.Form3.GsGridCust.Position(-30,-15)
+Gui.Form3.GsGridCust.Event(RowCellClick,GsGridCust_RowCellClick)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+V.Global.RowIndex.Declare(Long)
+V.Global..BulkDeclareString(CellValue)
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+Function.Intrinsic.UI.InvokeWaitDialog(" Loading Orders...", "Wait")
+Function.Intrinsic.UI.ChangeWaitStatus ("Loading Orders...", 20)
+'GSS Connection
+F.ODBC.Connection!con.OpenConnection(v.Ambient.PDSN,v.Ambient.PUser,v.Ambient.PPass) 
+V.Local..BulkDeclareString(sIcon,sGssLogo)
+F.Intrinsic.String.Build("{0}\GAB\GAS\gss2.ico",V.Caller.PluginsDir,v.Local.sIcon)
+F.Intrinsic.String.Build("{0}\GAB\GAS\GAB_GSS_Logo_Green_Dash.png",V.Caller.PluginsDir,V.Local.sGssLogo)
+Gui.Form..Icon(V.Local.sIcon)
+Gui.Form2..Icon(V.Local.sIcon)
+Gui.Form3..Icon(V.Local.sIcon)
+Gui.FrmOrderReview..Icon(V.Local.sIcon)
+Gui.Form.picGSSLogo.Picture(V.Local.sGssLogo)	
+'Anchor
+GUI.Form.GsGrid.Anchor(15)
+Gui.Form.picGSSLogo.Anchor(1)
+Gui.Form.cmdDelete.Anchor(9)
+'check dirs first for web importer
+Function.Intrinsic.Control.CallSub(check_dir)
+
+'populate grid
+Function.Intrinsic.Control.CallSub(Create_Gridview)
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Form_Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.Check_Dir.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+V.Local..BulkDeclareString(sDir, sSubDir)
+V.Local.bExists.Declare(Boolean)
+V.Local.i.Declare(Long)
+
+'Files\WEB_ORDERS 
+F.Intrinsic.String.Build("{0}\WEB_ORDERS",v.Caller.FilesDir,v.Local.sDir) 
+F.Intrinsic.File.DirExists(v.Local.sDir,v.Local.bExists) 
+F.Intrinsic.Control.If(v.Local.bExists,=,False) 
+	f.Intrinsic.File.CreateDir(v.Local.sDir) 
+Function.Intrinsic.Control.EndIf
+F.Intrinsic.String.Split("PART_ERRORS*!*UPLOADED*!*WEB_ERRORS*!*Excel","*!*",v.Local.sSubDir) 
+F.Intrinsic.Control.For(v.Local.i,0,v.Local.sSubDir.UBound,1) 
+	F.Intrinsic.String.Build("{0}\{1}",v.Local.sDir,v.Local.sSubDir(v.Local.i).Trim,v.Local.sSubDir(v.Local.i)) 
+	f.Intrinsic.File.DirExists(v.Local.sSubDir(v.Local.i),v.Local.bExists) 
+	F.Intrinsic.Control.If(v.Local.bExists,=,False) 
+		f.Intrinsic.File.CreateDir(v.Local.sSubDir(v.Local.i)) 
+	Function.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Next(v.Local.i) 
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Form_Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.Check_Dir.End
+
+Program.Sub.Create_GridView.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+
+Function.Intrinsic.UI.ChangeWaitStatus ("Loading Grid...", 40)
+
+Function.Intrinsic.UI.ChangeWaitStatus ("Loading Grid...", 80)
+
+F.Intrinsic.Control.If(V.DataTable.Temp.Exists)
+	F.Data.DataTable.Close("Temp")
+F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.If(V.DataTable.TB.Exists)
+	F.Data.DataTable.Close("TB")
+F.Intrinsic.Control.EndIf
+
+F.Data.DataTable.CreateFromSQL("Temp", "con", "Select  rTrim(CarrierCodes) As CarrierCodes,  rTrim(TAX_SALES_EX_NO) As TAX_SALES_EX_NO, rTrim(PercentDiscount) As PercentDiscount, rTrim(ORDER_Core) As ORDER_Core, rTrim(BillingCompany) As BillingCompany,  rTrim(BillingCompany) As BillingCompany,rTrim(bFirstName) As bFirstName, rTrim(bLastName) As bLastName,rTrim(bAddress1) As bAddress1,rTrim(bAddress2) As bAddress2,rTrim(bCity) As bCity,rTrim(bState) As bState,rTrim(bZip) As bZip,rTrim(bCountry) As bCountry, rTrim(Email) As Email, rTrim(Phone) As Phone, rTrim(ShippingCompany) As ShippingCompany,rTrim(sFirstName) As sFirstName, rTrim(sLastName) As sLastName,UPPER(rTrim(sAddress1)) As sAddress1,rTrim(sAddress2) As sAddress2,rTrim(sCity) As sCity,rTrim(sState) As sState,rTrim(sZip) As sZip,rTrim(sCountry) As sCountry,rTrim(Subtotal) As Subtotal,rTrim(HazMatFee) As HazMatFee,rTrim(SH) As SH, rTrim(StateTax) As StateTax, rTrim(CountyTax) As CountyTax,rTrim(Total) As Total, GrandTotal,rTrim(OrderDate) As OrderDate, rTrim(CreditCardType) As CreditCardType,rTrim(ShipVia) As ShipVia,rTrim(OrderComments) As OrderComments,rTrim(SKU) As SKU,rTrim(QTY) As QTY,rTrim(ItemName) As ItemName, rTrim(Amount) As Amount, If (rTrim(Customer) is NULL, '',  rTrim(Customer)) As Customer,rTrim(Discount) As Discount,rTrim(Fraud) As Fraud From GCG_4844_Web_Import order by order_core ASC", True)
+
+F.Data.DataView.Create("Temp", "Temp_V")
+
+ F.Data.DataView.ToDataTableDistinct("Temp", "Temp_V","TB","CreditCardType*!*CarrierCodes*!*Order_Core*!*TAX_SALES_EX_NO*!*BillingCompany*!*BFirstName*!*BLastName*!*BAddress1*!*BAddress2*!*BCity*!*BState*!*BZip*!*BCountry*!*Email*!*Phone*!*ShippingCompany*!*SFirstName*!*SLastName*!*SAddress1*!*SAddress2*!*SCity*!*SState*!*SZip*!*SCountry*!*GrandTotal*!*OrderDate*!*ShipVia*!*OrderComments*!*Customer*!*Fraud", True)
+ 
+F.Data.DataTable.AddColumn("TB", "Select", Boolean, 0) 
+F.Data.DataTable.AddColumn("TB", "Delete", Boolean, 0) 
+
+GUI.Form.GsGrid.AddGridViewFromDataTable("Grid", "TB")
+
+'Gui.Form.GsGrid.SetColumnProperty("Grid", "Order_Core", "AllowEdit",True)
+'Gui.Form.GsGrid.SetColumnProperty("Grid", "Order_Core","ReadOnly",True)
+
+Gui.Form.GsGrid.SetColumnProperty("Grid", "CarrierCodes","Visible",False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "CreditCardType","Visible",False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "TAX_SALES_EX_NO","Visible",False)
+
+'readOnly and allowEdit
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Select", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Select", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Delete", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Delete", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Customer", "AllowEdit",False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Customer", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "BillingCompany", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "BillingCompany", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bFirstName", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bFirstName", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bLastName", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bLastName", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bAddress1", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bAddress1", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bAddress2", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bAddress2", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bCity", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bCity", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bZip", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bZip", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bCountry", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bCountry", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Email", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Email", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Phone", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Phone", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "ShippingCompany", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "ShippingCompany", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sFirstName", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sFirstName", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sLastName", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sLastName", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sAddress1", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sAddress1", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sAddress2", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sAddress2", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sCity", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sCity", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sState", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sState", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sZip", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sZip", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sCountry", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sCountry", "ReadOnly", False)
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "Subtotal", "AllowEdit",True)
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "Subtotal", "ReadOnly", False)
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "HazMatFee", "AllowEdit",True)
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "HazMatFee", "ReadOnly", False)
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "SH", "AllowEdit",True)
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "SH", "ReadOnly", False)
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "StateTax", "AllowEdit",True)
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "StateTax", "ReadOnly", False)
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "CountyTax", "AllowEdit",True)
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "CountyTax", "ReadOnly", False)
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "Total", "AllowEdit",True)
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "Total", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "GrandTotal", "AllowEdit",False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "GrandTotal", "ReadOnly", True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "OrderDate", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "OrderDate", "ReadOnly", False)
+'Gui.Form.GsGrid.SetColumnProperty("Grid", "CreditCardType", "AllowEdit",True)
+'Gui.Form.GsGrid.SetColumnProperty("Grid", "CreditCardType", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "ShipVia", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "ShipVia", "ReadOnly", False)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "OrderComments", "AllowEdit",True)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "OrderComments", "ReadOnly", False)
+
+'width
+
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Order_Core", "MinWidth", 100)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Customer", "MinWidth", 75)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "BillingCompany", "MinWidth", 150)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bFirstName", "MinWidth", 150)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bLastName", "MinWidth", 150)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bAddress1", "MinWidth",150)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bAddress2", "MinWidth", 150)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bCity", "MinWidth", 100)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bState", "MinWidth", 100)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bZip", "MinWidth", 100)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bCountry", "MinWidth", 100)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Email", "MinWidth",200)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Phone", "MinWidth", 75)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "ShippingCompany", "MinWidth", 150)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sFirstName", "MinWidth", 150)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sLastName", "MinWidth", 150)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sAddress1", "MinWidth", 150)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sAddress2", "MinWidth", 150)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sCity", "MinWidth", 100)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sState", "MinWidth", 100)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sZip", "MinWidth", 100)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sCountry", "MinWidth", 100)
+'''Gui.Form.GsGrid.SetColumnProperty("Grid", "Subtotal", "MinWidth", 150)
+'''Gui.Form.GsGrid.SetColumnProperty("Grid", "HazMatFee", "MinWidth", 150)
+'''Gui.Form.GsGrid.SetColumnProperty("Grid", "SH", "MinWidth", 150)
+'''Gui.Form.GsGrid.SetColumnProperty("Grid", "StateTax", "MinWidth", 150)
+'''Gui.Form.GsGrid.SetColumnProperty("Grid", "CountyTax", "MinWidth", 150)
+'''Gui.Form.GsGrid.SetColumnProperty("Grid", "Total", "MinWidth", 150)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "GrandTotal", "MinWidth", 150)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "OrderDate", "MinWidth", 150)
+'Gui.Form.GsGrid.SetColumnProperty("Grid", "CreditCardType", "MinWidth", 150)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "ShipVia", "MinWidth", 150)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "OrderComments", "MinWidth",150)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Fraud", "MinWidth", 75)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Select", "MinWidth", 50)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Delete", "MinWidth", 50)
+
+'center header
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Order_Core", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Customer", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "BillingCompany", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bFirstName", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bLastName", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bAddress1", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bAddress2", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bCity", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bState", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bZip", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bCountry", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Email", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Phone", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "ShippingCompany", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sFirstName", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sLastName", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sAddress1", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sAddress2", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sCity", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sState", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sZip", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sCountry","HeaderHAlignment", "center")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "Subtotal", "HeaderHAlignment", "center")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "HazMatFee","HeaderHAlignment", "center")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "SH", "HeaderHAlignment", "center")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "StateTax", "HeaderHAlignment", "center")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "CountyTax", "HeaderHAlignment", "center")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "Total", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "GrandTotal", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "OrderDate","HeaderHAlignment", "center")
+'Gui.Form.GsGrid.SetColumnProperty("Grid", "CreditCardType", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "ShipVia", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "OrderComments", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Fraud", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Select", "HeaderHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Delete", "HeaderHAlignment", "center")
+
+'center cells
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Order_Core", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Customer", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "BillingCompany", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bFirstName", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bLastName", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bAddress1", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bAddress2", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bCity", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bState", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bZip", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bCountry", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Email", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Phone", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "ShippingCompany", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sFirstName", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sLastName", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sAddress1", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sAddress2", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sCity", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sState", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sZip", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sCountry","cellHAlignment", "center")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "Subtotal", "cellHAlignment", "center")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "HazMatFee","cellHAlignment", "center")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "SH", "cellHAlignment", "center")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "StateTax", "cellHAlignment", "center")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "CountyTax", "cellHAlignment", "center")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "Total", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "GrandTotal", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "OrderDate","cellHAlignment", "center")
+'Gui.Form.GsGrid.SetColumnProperty("Grid", "CreditCardType", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "ShipVia", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "OrderComments", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Fraud", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Select", "cellHAlignment", "center")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Delete", "cellHAlignment", "center")
+
+'bold column titles
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Order_Core", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Customer", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "BillingCompany", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bFirstName", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bLastName", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bAddress1", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bAddress2", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bCity", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bState", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bZip", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bCountry", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Email", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Phone", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "ShippingCompany", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sFirstName", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sLastName", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sAddress1", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sAddress2", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sCity", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sState", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sZip", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sCountry","HeaderFontBold", "true")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "Subtotal", "HeaderFontBold", "true")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "HazMatFee","HeaderFontBold", "true")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "SH", "HeaderFontBold", "true")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "StateTax", "HeaderFontBold", "true")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "CountyTax", "HeaderFontBold", "true")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "Total", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "GrandTotal", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "OrderDate","HeaderFontBold", "true")
+'Gui.Form.GsGrid.SetColumnProperty("Grid", "CreditCardType", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "ShipVia", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "OrderComments", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Fraud", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Select", "HeaderFontBold", "true")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Delete", "HeaderFontBold", "true")
+
+'order of columns
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Order_Core", "VisibleIndex ", 0)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Fraud", "VisibleIndex ", 1)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "ShipVia", "VisibleIndex", 2)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Select", "VisibleIndex", 3)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Customer", "VisibleIndex", 4)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "BillingCompany", "VisibleIndex ", 5)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bFirstName", "VisibleIndex ",6)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bLastName", "VisibleIndex ", 7)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bAddress1", "VisibleIndex",8)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bAddress2", "VisibleIndex", 9)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bCity", "VisibleIndex", 10)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bState", "VisibleIndex", 11)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bZip", "VisibleIndex", 12)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bCountry", "VisibleIndex", 13)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Email", "VisibleIndex", 14)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Phone", "VisibleIndex", 15)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "ShippingCompany", "VisibleIndex", 16)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sFirstName", "VisibleIndex", 17)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sLastName", "VisibleIndex", 18)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sAddress1", "VisibleIndex", 19)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sAddress2", "VisibleIndex", 20)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sCity", "VisibleIndex", 21)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sState", "VisibleIndex", 22)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sZip", "VisibleIndex", 23)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sCountry", "VisibleIndex", 24)
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "HazMatFee", "VisibleIndex", 25)
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "SH", "VisibleIndex", 26)
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "StateTax", "VisibleIndex", 27)
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "CountyTax", "VisibleIndex", 28)
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "Subtotal", "VisibleIndex", 29)
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "Total", "VisibleIndex", 30)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "GrandTotal", "VisibleIndex", 25)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "OrderDate", "VisibleIndex", 26)
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "CreditCardType", "VisibleIndex", 27)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "OrderComments", "VisibleIndex", 27)
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Delete", "VisibleIndex", 28)
+
+'Column Names
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Order_Core", "Caption", "Order")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Select", "Caption", "Select")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Customer", "Caption", "Customer")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "BillingCompany", "Caption", "Billing Company")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bFirstName", "Caption", "Billing First Name")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bLastName", "Caption", "Billing Last Name")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bAddress1", "Caption", "Billing Address 1")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bAddress2", "Caption", "Billing Address 2")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bCity", "Caption", "Billing City")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bState", "Caption", "Billing State")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bZip", "Caption", "Billing Zip")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "bCountry", "Caption", "Billing Country")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Email", "Caption", "Email")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Phone", "Caption", "Phone")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "ShippingCompany", "Caption", "Shipping Company")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sFirstName", "Caption", "Shipping First Name")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sLastName", "Caption", "Shipping Last Name")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sAddress1", "Caption", "Shipping Address 1")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sAddress2", "Caption", "Shipping Address 2")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sCity", "Caption", "Shipping City")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sState", "Caption", "Shipping State")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sZip", "Caption", "Shipping Zip")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "sCountry", "Caption", "Shipping Country")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "Subtotal", "Caption", "Subtotal")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "HazMatFee", "Caption", "Hazardous Material Fee")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "SH", "Caption", "Shipping & Handling")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "StateTax", "Caption", "State Tax")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "CountyTax", "Caption", "County Tax")
+''Gui.Form.GsGrid.SetColumnProperty("Grid", "Total", "Caption", "Total")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "GrandTotal", "Caption", "Grand Total")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "OrderDate", "Caption", "Order Date")
+'Gui.Form.GsGrid.SetColumnProperty("Grid", "CreditCardType", "Caption", "Credit Card Type")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "ShipVia", "Caption", "ShipVia")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "OrderComments", "Caption", "Comments")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Delete", "Caption", "Delete")
+
+Gui.Form.GsGrid.SetColumnProperty("Grid", "OrderDate", "DisplayCustomDatetime", "d")
+Gui.Form.GsGrid.SetColumnProperty("Grid", "GrandTotal", "DisplayCustomNumeric", "0.00")
+'AutoSize option off from GridProperty. 
+Gui.Form.GsGrid.SetGridViewProperty("Grid", "OptionsViewColumnAutoWidth", "False")
+
+Gui.Form.GsGrid.AddStyleFormatCondition("Grid", "Customer", "tagName1", "Less", "New")
+Gui.Form.GsGrid.SetStyleFormatConditionProperty("Grid", "Customer", "tagName1", "backcolor", "#ff93a5")
+
+Gui.Form.GsGrid.SetColumnProperty("Grid", "Customer", "CellForeColor","Blue")
+Function.Intrinsic.UI.ChangeWaitStatus ("Loading Grid...", 100)
+GUI.Form.GsGrid.MainView("Grid")
+
+Gui.Form.GsGrid.SetGridViewProperty("Grid", "Enableappearanceoddrow", True)
+
+GUI.Form..Show
+Function.Intrinsic.UI.CloseWaitDialog
+''GUI.Form..Enabled(TRUE)
+''Gui.Form..AlwaysOnTop(TRUE)
+''Gui.Form..AlwaysOnTop(FALSE)
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Form_Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.Create_GridView.End
+
+Program.Sub.Form_UnLoad.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+Gui.Form..Visible(False)
+F.ODBC.Connection!con.Close
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.Form_UnLoad.End
+
+Program.Sub.GsGrid_RowCellClick.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+V.Local..BulkDeclareString(sTemp)
+
+'hyperlinks to customer master
+F.Intrinsic.Control.If(Variable.Args.Column, =, "Customer")
+''	GUI.Form..Enabled(False)
+	'grab the row index for insertion after selection
+	V.Global.RowIndex.Set(Variable.Args.RowIndex)
+	V.Global.CellValue.Set(Variable.Args.CellValue)
+	GUI.Form2..Show
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Form_Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.GsGrid_RowCellClick.End
+
+Program.Sub.GsGrid_CellValueChanged.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+V.Local..BulkDeclareString(sTemp, ssql)
+'F.Intrinsic.UI.Msgbox("cell value change")
+'dont update if check boxes
+
+F.Intrinsic.Control.If(Variable.Args.Column, <>, "Select")
+F.Intrinsic.Control.AndIf(Variable.Args.Column, <>, "Delete")
+	'update dataBase
+	Gui.Form.GsGrid.GetCellValueByColumnName ("Grid", "ORDER_Core", Variable.Args.RowIndex, V.Local.sTemp)
+	F.Intrinsic.String.Build("Update GCG_4844_Web_Import Set {0} = '{1}' Where ORDER_Core = '{2}'", Variable.Args.Column, Variable.Args.Value.Trim,V.Local.sTemp, V.Local.ssql)
+	F.ODBC.Connection!con.Execute(V.Local.ssql)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Form_Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.GsGrid_CellValueChanged.End
+
+Program.Sub.cmdCreateOrder_Click.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+V.Local..BulkDeclareLong(iC, iLine, iRowCount, iXtra)
+V.Local..BulkDeclareString(ssql, sTemp, sLine, sParams, sFileName,sFull, sPath, sQTY, sUnitPrice, sLeft, sRight, sName, sValue, sRet)
+V.Local..BulkDeclareFloat(fQTY, fFreight)
+''GUI.Form..Enabled(False)
+Function.Intrinsic.UI.InvokeWaitDialog("Creating Orders...", "Wait")
+Function.Intrinsic.UI.ChangeWaitStatus ("Creating Orders...", 20)
+
+'web importer uploader
+'select to view where select = 'True', 
+F.Data.DataView.Create("TB", "T_V", 22, "[Select] = 'TRUE'", "" )
+
+F.Intrinsic.Control.If(V.DataView.TB!T_V.RowCount,=,0)
+	F.Intrinsic.UI.Msgbox("Please select at least one order to upload.")
+	F.Intrinsic.UI.CloseWaitDialog
+	F.Data.DataView.Close("TB","T_V")
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.EndIf
+
+'check that the customers exist for thr selected
+F.Data.DataView.Create("TB", "T_Customer", 22,"[Customer] = ''  AND [Select] = 'TRUE'", "" )
+V.Local.iRowCount.Set(V.DataView.TB!T_Customer.RowCount)
+F.Intrinsic.Control.If(V.Local.iRowCount, >, 0)
+	Function.Intrinsic.UI.CloseWaitDialog
+	F.Intrinsic.UI.Msgbox("Missing Customers On Orders")
+	F.Data.DataView.Close("TB", "T_Customer")
+	F.Data.DataView.Close("TB", "T_V")
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.EndIf
+F.Data.DataView.Close("TB", "T_Customer")
+
+'check the ship to's and add where needed
+F.Intrinsic.Control.CallSub(Check_SHIP_TO)
+
+'loop through view and create dataTable for each order
+V.Local.iRowCount.Set(V.DataView.TB!T_V.RowCount--)
+F.Intrinsic.Control.For(V.Local.iC, 0, V.Local.iRowCount,1)
+
+	'select * to dataTable 
+	F.Intrinsic.String.Build("Select * From GCG_4844_Web_Import Where ORDER_Core = '{0}'", V.DataView.TB!T_V(V.Local.iC).ORDER_Core!FieldValTrim, V.Local.ssql)
+	F.Data.DataTable.CreateFromSQL("L", "con", V.Local.ssql)
+	F.Intrinsic.Control.For(V.Local.iLine, 0, V.DataTable.L.RowCount--,1)
+		'customer
+		F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).Customer!Fieldvaltrim," ",7, V.Local.sTemp)
+		F.Intrinsic.String.Build("O{0}",V.Local.sTemp,V.Local.sLine)
+		'Freight= Shipping and Handling + HazMat
+		F.Intrinsic.String.RPad(V.Local.sLine," ",15,V.Local.sLine)
+		F.Intrinsic.Math.Add(V.DataTable.L(v.local.iline).SH!Fieldvaltrim, V.DataTable.L(v.Local.iLine).HazMatFee!Fieldvaltrim, V.Local.fFreight)
+		F.Intrinsic.Math.Round(V.Local.fFreight, 2, V.Local.fFreight)
+		F.Intrinsic.String.Split(V.Local.fFreight, ".",  V.Local.sTemp)
+		F.Intrinsic.Control.If(V.Local.sTemp.UBound, =, 0)
+			F.Intrinsic.String.LPad(V.Local.sTemp, "0", 8, V.Local.sTemp)
+			F.Intrinsic.String.RPad(V.Local.sTemp, "0", 10, V.Local.sTemp)
+		F.Intrinsic.Control.Else
+			F.Intrinsic.String.LPad(V.Local.sTemp(0), "0", 8, V.Local.sTemp(0))
+			F.Intrinsic.String.RPad(V.Local.sTemp(1), "0", 2, V.Local.sTemp(1))
+			F.Intrinsic.String.Join(V.Local.sTemp, V.Local.sTemp)
+			F.Intrinsic.String.Replace(V.Local.sTemp, "!*!", "", V.Local.sTemp)
+		F.Intrinsic.Control.EndIf
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		
+		'Freight Flag, only if Ship To is Tennesse and it's not exempt
+'		F.Intrinsic.Control.If(V.DataTable.L(v.Local.iLine).sState!Fieldvaltrim,=,"TN","AND",V.DataTable.L(V.Local.iLine).TAX_SALES_EX_NO!FieldValTrim,=,"")
+'			F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,"Y",V.Local.sLine)
+'		F.Intrinsic.Control.EndIf
+
+		'Flag Freight as not taxable
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,"D",V.Local.sLine)
+		
+
+		
+	
+		
+		'order date
+		F.Intrinsic.String.RPad(V.Local.sLine," ",35,V.Local.sLine)
+		F.Intrinsic.String.Format(V.DataTable.L(v.Local.iLine).OrderDate!Fieldvaltrim,"YYYYMMDD",V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		'create file name here
+		F.Intrinsic.String.Build("{0}_{1}.txt",V.DataTable.L(v.Local.iLine).ORDER_Core!Fieldvaltrim, V.Local.sTemp,V.Local.sFileName)	
+
+		'USER FIELD 5
+		F.Intrinsic.String.RPad(v.Local.sLine," ",163,v.Local.sLine)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,"PREPAID",V.Local.sLine)
+		'PO Number
+		F.Intrinsic.String.RPad(v.Local.sLine," ",201,v.Local.sLine)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.DataTable.L(v.Local.iLine).Order_Core!Fieldvaltrim,V.Local.sLine)
+		
+		'shipping data
+		F.Intrinsic.String.RPad(V.local.sLine," ",232, V.Local.sLine)
+		F.Intrinsic.String.Build("{0}{1}",V.local.sLine,"S",V.local.sLine) 
+		
+		'ship via
+		F.Intrinsic.String.RPad(V.Local.sLine," ",233,V.Local.sLine)
+		F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).ShipVia!Fieldvaltrim," ",20, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+	
+		'carrier
+		F.Intrinsic.String.RPad(V.Local.sLine," ",253,V.Local.sLine)
+		F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).CarrierCodes!Fieldvaltrim," ",6, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		
+		
+		'QTY
+		F.Intrinsic.String.RPad(V.Local.sLine," ",705,V.Local.sLine)
+		F.Intrinsic.String.Split(V.DataTable.L(v.Local.iLine).QTY!Fieldvaltrim,".",V.Local.sQty) 
+		Function.Intrinsic.Control.If(V.Local.sQty.UBound,<,1) 
+				'no decimal 
+			F.Intrinsic.String.LPad(V.Local.sQty(0).Trim,"0",9,V.Local.sQty(0)) 
+			F.Intrinsic.String.rPad(V.Local.sQty(0).Trim,"0",13,V.Local.sQty(0)) 
+		Function.Intrinsic.Control.Else 
+			f.Intrinsic.String.LPad(V.Local.sQty(0).Trim,"0",9,V.Local.sQty(0)) 
+			f.Intrinsic.String.RPad(V.Local.sQty(1).Trim,"0",4,V.Local.sQty(1))
+			f.Intrinsic.String.Join(V.Local.sQty,"",V.Local.sQty)
+		Function.Intrinsic.Control.EndIf
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sQty,V.Local.sLine)	
+		'PART
+		F.Intrinsic.String.RPad(V.Local.sLine," ",730,V.Local.sLine)
+		F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).SKU!Fieldvaltrim," ",20, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		
+		'Quoted Price
+		F.Intrinsic.String.RPad(V.Local.sLine," ",770,V.Local.sLine)
+		F.Intrinsic.String.Split(V.DataTable.L(v.Local.iLine).Amount!Fieldvaltrim, ".", V.Local.sUnitPrice)
+		Function.Intrinsic.Control.If(V.Local.sUnitPrice.UBound, =, 1)
+			f.Intrinsic.String.LPad(V.Local.sUnitPrice(0).Trim,"0",10,V.Local.sUnitPrice(0)) 
+			f.Intrinsic.String.RPad(V.Local.sUnitPrice(1).Trim,"0",6,V.Local.sUnitPrice(1)) 
+			f.Intrinsic.String.Build("{0}{1}{2}",v.Local.sLine,V.Local.sUnitPrice(0),V.Local.sUnitPrice(1),v.Local.sLine)
+		Function.Intrinsic.Control.Else
+			f.Intrinsic.String.LPad(V.Local.sUnitPrice(0).Trim,"0",10,V.Local.sUnitPrice(0)) 
+			f.Intrinsic.String.RPad(V.Local.sUnitPrice(0).Trim,"0",16,V.Local.sUnitPrice(0)) 
+			f.Intrinsic.String.Build("{0}{1}",v.Local.sLine,V.Local.sUnitPrice(0),v.Local.sLine)
+		Function.Intrinsic.Control.EndIf
+		'Over Ride Price
+		F.Intrinsic.String.RPad(V.Local.sLine," ",786,V.Local.sLine)
+		F.Intrinsic.String.Split(V.DataTable.L(v.Local.iLine).Amount!Fieldvaltrim, ".", V.Local.sUnitPrice)
+		Function.Intrinsic.Control.If(V.Local.sUnitPrice.UBound, =, 1)
+			f.Intrinsic.String.LPad(V.Local.sUnitPrice(0).Trim,"0",10,V.Local.sUnitPrice(0)) 
+			f.Intrinsic.String.RPad(V.Local.sUnitPrice(1).Trim,"0",6,V.Local.sUnitPrice(1)) 
+			f.Intrinsic.String.Build("{0}{1}{2}",v.Local.sLine,V.Local.sUnitPrice(0),V.Local.sUnitPrice(1),v.Local.sLine)
+		Function.Intrinsic.Control.Else
+			f.Intrinsic.String.LPad(V.Local.sUnitPrice(0).Trim,"0",10,V.Local.sUnitPrice(0)) 
+			f.Intrinsic.String.RPad(V.Local.sUnitPrice(0).Trim,"0",16,V.Local.sUnitPrice(0)) 
+			f.Intrinsic.String.Build("{0}{1}",v.Local.sLine,V.Local.sUnitPrice(0),v.Local.sLine)
+		Function.Intrinsic.Control.EndIf
+		'Description
+		F.Intrinsic.String.RPad(V.Local.sLine," ",818,V.Local.sLine)
+		F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).ItemName!Fieldvaltrim," ",30, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+	
+		'Extension Amount - Amount Discount
+		V.Local.fQTY.Redim(0,0)
+		F.Intrinsic.String.RPad(V.Local.sLine," ",1017,V.Local.sLine)
+		F.Intrinsic.Math.Mult(V.DataTable.L(v.Local.iLine).Amount!Fieldvaltrim, V.DataTable.L(v.Local.iLine).PercentDiscount!Fieldvaltrim, V.Local.fQTY)
+		F.Intrinsic.Math.Sub(V.DataTable.L(v.Local.iLine).Amount!Fieldvaltrim, V.Local.fQTY, V.Local.fQTY)
+		F.Intrinsic.Math.Mult(V.Local.fQTY, V.DataTable.L(v.Local.iLine).QTY!Fieldvaltrim, V.Local.fQTY)
+		''''''''''Round Here
+		Function.Intrinsic.Math.ROUND(V.Local.fQTY, 2, 1, V.Local.fQTY)
+		F.Intrinsic.String.Split(V.Local.fQTY,".",V.Local.sQTY) 
+		Function.Intrinsic.Control.If(V.Local.sQty.UBound,<,1) 
+				'no decimal 
+			F.Intrinsic.String.LPad(V.Local.sQty(0).Trim,"0",10,V.Local.sQty(0)) 
+			F.Intrinsic.String.RPad(V.Local.sQty(0).Trim,"0",16,V.Local.sQty) 
+		Function.Intrinsic.Control.Else 
+			f.Intrinsic.String.LPad(V.Local.sQty(0).Trim,"0",10,V.Local.sQty(0)) 
+			f.Intrinsic.String.RPad(V.Local.sQty(1).Trim,"0",6,V.Local.sQty(1))
+			f.Intrinsic.String.Join(V.Local.sQty,"",V.Local.sQty)
+		Function.Intrinsic.Control.EndIf
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sQty,V.Local.sLine)	
+		
+	'""""	Check For International
+		F.Intrinsic.Control.If(V.DataTable.L(v.Local.iLine).sCountry!Fieldvaltrim, <>, "USA")
+			F.Intrinsic.String.RPad(V.Local.sLine," ",1517,V.Local.sLine)
+			F.Intrinsic.String.Build("{0}Y",V.Local.sLine,V.Local.sLine)
+		F.Intrinsic.Control.EndIf
+		'Ship Name
+		F.Intrinsic.String.RPad(V.Local.sLine," ",1518,V.Local.sLine)
+		F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).ShippingCompany!Fieldvaltrim," ",40, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		'Ship Address 1
+		F.Intrinsic.String.RPad(V.Local.sLine," ",1558,V.Local.sLine)
+		F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).sAddress1!Fieldvaltrim," ",40, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		'Ship Address 2
+		F.Intrinsic.String.RPad(V.Local.sLine," ",1598,V.Local.sLine)
+		F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).sAddress2!Fieldvaltrim," ",40, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		
+		F.Intrinsic.Control.If(V.DataTable.L(v.Local.iLine).sCountry!Fieldvaltrim, =, "USA")
+			'Ship City
+			F.Intrinsic.String.RPad(V.Local.sLine," ",1758,V.Local.sLine)
+			F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).sCity!Fieldvaltrim," ",25, V.Local.sTemp)
+			F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+			'Ship State
+			F.Intrinsic.String.RPad(V.Local.sLine," ",1783,V.Local.sLine)
+			F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).sState!Fieldvaltrim," ",2, V.Local.sTemp)
+			F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		F.Intrinsic.Control.Else
+			'Ship City, Ship State Address 4
+			F.Intrinsic.String.RPad(V.Local.sLine," ",1678,V.Local.sLine)
+			F.Intrinsic.String.Build("{0}	{1}", V.DataTable.L(v.Local.iLine).sCity!Fieldvaltrim, V.DataTable.L(v.Local.iLine).sState!Fieldvaltrim, V.Local.sTemp)
+			F.Intrinsic.String.RPad(V.Local.sTemp," ",40, V.Local.sTemp)
+			F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+			'Ship Zip, Ship Country Address 5
+			F.Intrinsic.String.RPad(V.Local.sLine," ",1718,V.Local.sLine)
+			F.Intrinsic.String.Build("{0}	{1}", V.DataTable.L(v.Local.iLine).sZip!Fieldvaltrim, V.DataTable.L(v.Local.iLine).sCountry!Fieldvaltrim, V.Local.sTemp)
+			F.Intrinsic.String.RPad(V.Local.sTemp," ",40, V.Local.sTemp)
+			F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+			'also need to add this here because mapping UPS Worldship 8/16/2018 DRH
+			'Ship City
+			F.Intrinsic.String.RPad(V.Local.sLine," ",1758,V.Local.sLine)
+			F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).sCity!Fieldvaltrim," ",25, V.Local.sTemp)
+			F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+			'Ship State
+			F.Intrinsic.String.RPad(V.Local.sLine," ",1783,V.Local.sLine)
+			F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).sState!Fieldvaltrim," ",2, V.Local.sTemp)
+			F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		F.Intrinsic.Control.EndIf
+		
+		'Ship Zip
+		F.Intrinsic.String.RPad(V.Local.sLine," ",1785,V.Local.sLine)
+		F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).sZip!Fieldvaltrim," ",13, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		'Ship Country
+		F.Intrinsic.String.RPad(V.Local.sLine," ",1798,V.Local.sLine)
+		F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).sCountry!Fieldvaltrim," ",25, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		'Ship Attention
+		F.Intrinsic.String.RPad(V.Local.sLine," ",1823,V.Local.sLine)
+		F.Intrinsic.String.Build("{0} {1}", V.DataTable.L(v.Local.iLine).sFirstName!Fieldvaltrim, V.DataTable.L(v.Local.iLine).sLastName!Fieldvaltrim, V.Local.sTemp)
+		F.Intrinsic.String.RPad(V.Local.sTemp," ",40, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		
+		'""""	Check For International
+		F.Intrinsic.Control.If(V.DataTable.L(v.Local.iLine).bCountry!Fieldvaltrim, <>, "USA")
+			F.Intrinsic.String.RPad(V.Local.sLine," ",1863,V.Local.sLine)
+			F.Intrinsic.String.Build("{0}Y",V.Local.sLine,V.Local.sLine)
+		F.Intrinsic.Control.EndIf
+		
+		'Bill Name
+		F.Intrinsic.String.RPad(V.Local.sLine," ",1864,V.Local.sLine)
+		F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).BillingCompany!Fieldvaltrim," ",40, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		'Bill Address 1
+		F.Intrinsic.String.RPad(V.Local.sLine," ",1904,V.Local.sLine)
+		F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).bAddress1!Fieldvaltrim," ",40, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		'Bill Address 2
+		F.Intrinsic.String.RPad(V.Local.sLine," ",1944,V.Local.sLine)
+		F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).bAddress2!Fieldvaltrim," ",40, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		
+		F.Intrinsic.Control.If(V.DataTable.L(v.Local.iLine).bCountry!Fieldvaltrim, =, "USA")
+			'Bill City
+			F.Intrinsic.String.RPad(V.Local.sLine," ",2104,V.Local.sLine)
+			F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).bCity!Fieldvaltrim," ",25, V.Local.sTemp)
+			F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+			'Bill State 
+			F.Intrinsic.String.RPad(V.Local.sLine," ",2129,V.Local.sLine)
+			F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).bState!Fieldvaltrim," ",2, V.Local.sTemp)
+			F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		F.Intrinsic.Control.Else
+			'Bill City, Bill State Address 4
+			F.Intrinsic.String.RPad(V.Local.sLine," ",2024,V.Local.sLine)
+			F.Intrinsic.String.Build("{0}	{1}", V.DataTable.L(v.Local.iLine).bCity!Fieldvaltrim, V.DataTable.L(v.Local.iLine).bState!Fieldvaltrim, V.Local.sTemp)
+			F.Intrinsic.String.RPad(V.Local.sTemp," ",40, V.Local.sTemp)
+			F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+			'Bill Zip, Bill Country Address 5	
+			F.Intrinsic.String.RPad(V.Local.sLine," ",2064,V.Local.sLine)
+			F.Intrinsic.String.Build("{0}	{1}", V.DataTable.L(v.Local.iLine).bZip!Fieldvaltrim, V.DataTable.L(v.Local.iLine).bCountry!Fieldvaltrim, V.Local.sTemp)
+			F.Intrinsic.String.RPad(V.Local.sTemp," ",40, V.Local.sTemp)
+			F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+			'also need to add this here because mapping UPS Worldship 8/16/2018 DRH
+			'Bill City
+			F.Intrinsic.String.RPad(V.Local.sLine," ",2104,V.Local.sLine)
+			F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).bCity!Fieldvaltrim," ",25, V.Local.sTemp)
+			F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+			'Bill State 
+			F.Intrinsic.String.RPad(V.Local.sLine," ",2129,V.Local.sLine)
+			F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).bState!Fieldvaltrim," ",2, V.Local.sTemp)
+			F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		F.Intrinsic.Control.EndIf
+		
+		'Bill Zip 
+		F.Intrinsic.String.RPad(V.Local.sLine," ",2131,V.Local.sLine)
+		F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).bZip!Fieldvaltrim," ",37, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		'Bill Country 
+		F.Intrinsic.String.RPad(V.Local.sLine," ",2144,V.Local.sLine)
+		F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).bCountry!Fieldvaltrim," ",3, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		'Bill Attention
+		F.Intrinsic.String.RPad(V.Local.sLine," ",2169,V.Local.sLine)
+		F.Intrinsic.String.Build("{0} {1}", V.DataTable.L(v.Local.iLine).bFirstName!Fieldvaltrim, V.DataTable.L(v.Local.iLine).bLastName!Fieldvaltrim, V.Local.sTemp)
+		F.Intrinsic.String.RPad(V.Local.sTemp," ",40, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		'Email
+		F.Intrinsic.String.RPad(V.Local.sLine," ",2209,V.Local.sLine)
+		F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).Email!Fieldvaltrim," ",100, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		'Phone
+		F.Intrinsic.String.RPad(V.Local.sLine," ",2309,V.Local.sLine)
+		F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).Phone!Fieldvaltrim," ",20, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		'Comment
+		F.Intrinsic.String.RPad(V.Local.sLine," ",2329,V.Local.sLine)
+		F.Intrinsic.String.RPad(V.DataTable.L(v.Local.iLine).OrderComments!Fieldvaltrim," ",300, V.Local.sTemp)
+		F.Intrinsic.String.Replace(V.Local.sTemp,v.Ascii.13, " ", V.Local.sTemp)
+		F.Intrinsic.String.Replace(V.Local.sTemp,v.Ascii.10, " ", V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,V.Local.sTemp,V.Local.sLine)
+		'HYYYNNN
+		F.Intrinsic.String.Build("{0}{1}",V.Local.sLine,"HYYYNNN",V.Local.sLine)
+		'pad out and add to order
+		F.Intrinsic.String.RPad(V.Local.sLine," ",4636,V.Local.sLine)
+		F.Intrinsic.String.Build("{0}{1}{2}",V.Local.sFull,V.Local.sLine,V.Ambient.NewLine,V.Local.sFull) 
+
+	F.Intrinsic.Control.Next(V.Local.iLine)
+	
+	'close the datatable for the lines 
+	F.Data.DataTable.Close("L")	
+	'create the complete file for this order
+	
+	F.Intrinsic.String.Build("{0}\Web_Orders\{1}",V.Caller.FilesDir,V.Local.sFileName,V.Local.sPath)
+	F.Intrinsic.File.String2File(V.Local.sPath,V.Local.sFull)
+	'reset sFull
+	V.Local.sFull.Set("")	
+F.Intrinsic.Control.Next(V.Local.iC)
+
+' upload
+'Call ORDUPL to upload sales orders created, it will process all txt files created by this program.
+'if ORDUPL encounters an error, it will move the file to the ERRORS folder designated in GLOBAL\FILES\GSSPARAM.txt or GSSPARAMccc.txt
+
+F.Intrinsic.String.Build("{0}!*!ORDUPL",V.Caller.CompanyCode,V.Local.sParams)
+F.Global.General.CallWrapperSync(51,V.Local.sParams)
+
+Function.Intrinsic.UI.ChangeWaitStatus ("Creating Orders...", 50)
+
+'write to table items mot covered in web importer, ie Carrier
+F.Intrinsic.Control.CallSub(Carrier)
+
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Form_Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.cmdCreateOrder_Click.End
+
+Program.Sub.cmdDelete_Click.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+V.Local.ssql.Declare(String)
+V.Local..BulkDeclareLong(iC,  iRowCount)
+
+F.Data.DataView.Create("TB", "T_D", 22, "[Delete] = 'TRUE'", "" )
+
+V.Local.iRowCount.Set(V.DataView.TB!T_D.RowCount--)
+F.Intrinsic.Control.For(V.Local.iC, 0, V.Local.iRowCount,1)
+	F.Intrinsic.String.Build("Delete From GCG_4844_Web_Import Where ORDER_Core = '{0}'", V.DataView.TB!T_D(V.Local.iC).ORDER_Core!FieldValTrim, V.Local.ssql)
+	F.ODBC.Connection!con.Execute(V.Local.ssql)
+F.Intrinsic.Control.Next(V.Local.iC)
+F.Data.DataView.Close("TB", "T_D")
+'refresh dashboard
+F.Intrinsic.Control.CallSub("cmdRefresh_Click")
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Form_Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.cmdDelete_Click.End
+
+Program.Sub.cmdRefresh_Click.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+Function.Intrinsic.UI.InvokeWaitDialog(" Refreshing...", "Wait")
+Function.Intrinsic.UI.ChangeWaitStatus ("Refreshing...", 20)
+F.Intrinsic.Control.CallSub("Create_GridView")
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Form_Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.cmdRefresh_Click.End
+
+Program.Sub.cmdCustBrwsr_Click.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+Gui.Form2..Visible(False)
+'populate customer grid
+F.Data.DataTable.CreateFromSQL("C", "con", "Select Customer as CustomerNo, NAME_CUSTOMER as Customer, '' As Email, Telephone as Phone, ADDRESS1 as Address, City, State From V_CUSTOMER_MASTER", TRUE)
+F.Data.Dictionary.CreateFromSQL("dict", "con", "Select  Customer as CustomerNo,  UPPER(rTrim(Email)) as Email From V_CUSTOMER_SALES Order By Customer")
+F.Data.Dictionary.SetDefaultReturn("dict", "")
+F.Data.DataTable.FillFromDictionary("C", "dict", "CustomerNo", "Email")
+F.Data.Dictionary.Close("dict")
+
+GUI.Form3.GsGridCust.AddGridViewFromDataTable("GridC", "C")
+'lock down
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "CustomerNo", "AllowEdit",False)
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "CustomerNo", "ReadOnly", False)
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "Customer", "AllowEdit",False)
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "Customer", "ReadOnly", True)
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "Email", "AllowEdit",False)
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "Email", "ReadOnly", True)
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "Address", "AllowEdit",False)
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "Address", "ReadOnly", True)
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "City", "AllowEdit",False)
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "City", "ReadOnly", True)
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "State", "AllowEdit",False)
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "State", "ReadOnly", True)
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "Phone", "AllowEdit",False)
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "Phone", "ReadOnly", True)
+
+'width
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "CustomerNo", "MinWidth",75)
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "Customer", "MinWidth",175)
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "Email", "MinWidth",150)
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "Address", "MinWidth",175)
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "City", "MinWidth",100)
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "State", "MinWidth",50)
+Gui.Form3.GsGridCust.SetColumnProperty("GridC", "Phone", "MinWidth",75)
+
+
+GUI.Form3.GsGridCust.MainView("GridC")
+GUI.Form3..Show
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Form_Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.cmdCustBrwsr_Click.End
+
+Program.Sub.cmdCreateCustomer_Click.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+V.Local..BulkDeclareString( sData, sFile,  sRet, sTemp, ssql, sParams)
+V.Local..BulkDeclareLong(iCust)
+V.Local.bEx.Declare(Boolean)
+
+'close form
+Gui.Form2..Visible(False)
+V.Local.sRet.Set("")
+V.Local.iCust.Set(0)
+'get next customer number
+
+'WHERE ISNUMERIC(col)=1
+
+F.ODBC.Connection!con.ExecuteAndReturn("Select Top 1 Customer From V_CUSTOMER_MASTER Order By Customer DESC", V.Local.sRet)
+F.Intrinsic.Math.Add(V.Local.sRet, 1, V.Local.iCust)
+'delete what's there in case of error out
+F.ODBC.Connection!con.Execute("delete from GCG_4844_Customer")
+'for testing
+'V.Local.iCust.Set(75)
+
+Gui.Form.GsGrid.GetCellValueByColumnName ("Grid", "ORDER_Core", V.Global.RowIndex, V.Local.sTemp)
+F.Intrinsic.String.Build("Select Top 1 Customer,rTrim(BillingCompany) as BillingCompany,bAddress1,bAddress2,bCity,bState,bZip,bCountry,Email,Phone,rTrim(ShippingCompany) as ShippingCompany,sAddress1,sAddress2,sCity,sState,sZip,sCountry, bFirstName, bLastName, sFirstName,sLastName From GCG_4844_Web_Import Where ORDER_Core = '{0}'", V.Local.sTemp, V.Local.ssql)
+F.Data.DataTable.CreateFromSQL("C", "con", V.Local.ssql)
+F.Data.DataTable.SetValue("C", 0, "Customer", V.Local.iCust)
+F.Data.DataTable.SaveToDB("C", "con", "GCG_4844_Customer", "",128)
+F.Data.DataTable.Close("C")
+
+'open
+F.Intrinsic.String.Build("N!*!ZDR!*!{0}", V.Local.iCust, V.Local.sTemp)
+Function.Global.General.CallWrapperSync("100000", V.Local.sTemp)
+
+'then update database customer for this order_core, first check to make sure the customer was created
+F.Intrinsic.String.Build("Select Top 1 Customer From Customer_Master Where Customer = '{0}'", V.Local.iCust, V.Local.ssql)
+F.ODBC.Connection!con.ExecuteAndReturn(V.Local.ssql, V.Local.sTemp)
+
+F.Intrinsic.Control.If(V.Local.sTemp, =, V.Local.iCust)
+	Gui.Form.GsGrid.SetCellValueByColumnName ("Grid", "Customer", V.Global.RowIndex, V.Local.iCust)
+	Gui.Form.GsGrid.GetCellValueByColumnName ("Grid", "ORDER_Core", V.Global.RowIndex, V.Local.sTemp)
+	F.Intrinsic.String.Build("Update GCG_4844_Web_Import Set Customer = '{0}' Where ORDER_Core = '{1}'", V.Local.iCust, V.Local.sTemp, V.Local.ssql)
+	F.ODBC.Connection!con.Execute(V.Local.ssql)
+	
+	'update the TAX_SALES_EX_NO
+	F.Intrinsic.String.Build("Select rTrim(TAX_SALES_EX_NO) As TAX_SALES_EX_NO From CUSTOMER_TAX Where CUST = '{0}'", V.Local.iCust, V.Local.ssql)
+	F.ODBC.Connection!con.ExecuteAndReturn(V.Local.ssql, V.Local.sTemp)
+	F.Intrinsic.Control.If(V.Local.sTemp, <>, "")
+		F.Intrinsic.String.Build("Update GCG_4844_Web_Import Set TAX_SALES_EX_NO = '{0}' Where Customer = '{1}'", V.Local.sTemp,  V.Local.iCust,V.Local.ssql)
+		F.ODBC.Connection!con.Execute(V.Local.ssql)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+'refresh dashboard
+F.Intrinsic.Control.CallSub("cmdRefresh_Click")
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Form_Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.cmdCreateCustomer_Click.End
+
+Program.Sub.Form2_UnLoad.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+Gui.Form2..Visible(False)
+	
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Form_Unload)
+F.Intrinsic.Control.EndTry	
+Program.Sub.Form2_UnLoad.End
+
+Program.Sub.cmdOpenCust_Click.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+V.Local.sTemp.Declare(String)
+Gui.Form2..Visible(False)
+	F.Intrinsic.Control.If(Variable.Global.CellValue, =, "")
+		F.Intrinsic.UI.Msgbox("Customer Does Not Exist")
+	F.Intrinsic.Control.Else
+		F.Intrinsic.String.Build("E!*!ZDR!*!{0}", Variable.Global.CellValue, V.Local.sTemp)
+		Function.Global.General.CallWrapperSync("100000", V.Local.sTemp)
+	F.Intrinsic.Control.EndIf
+''GUI.Form..Enabled(TRUE)
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Form_Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.cmdOpenCust_Click.End
+
+Program.Sub.GsGridCust_RowCellClick.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+Gui.Form3..Visible(False)
+V.Local..BulkDeclareString(sTemp, ssql, sCust)
+'then update database customer for this order_core
+Gui.Form3.GsGridCust.GetCellValueByColumnName ("GridC", "CustomerNo", V.Args.RowIndex, V.Local.sCust)
+Gui.Form.GsGrid.SetCellValueByColumnName ("Grid", "Customer", V.Global.RowIndex, V.Local.sCust)
+Gui.Form.GsGrid.GetCellValueByColumnName ("Grid", "ORDER_Core", V.Global.RowIndex, V.Local.sTemp)
+F.Intrinsic.String.Build("Update GCG_4844_Web_Import Set Customer = '{0}' Where ORDER_Core = '{1}'", V.Local.sCust, V.Local.sTemp, V.Local.ssql)
+F.ODBC.Connection!con.Execute(V.Local.ssql)
+F.Data.DataTable.Close("C")
+
+'update the TAX_SALES_EX_NO
+F.Intrinsic.String.Build("Select rTrim(TAX_SALES_EX_NO) As TAX_SALES_EX_NO From CUSTOMER_TAX Where CUST = '{0}'", V.Local.sCust, V.Local.ssql)
+F.ODBC.Connection!con.ExecuteAndReturn(V.Local.ssql, V.Local.sTemp)
+F.Intrinsic.Control.If(V.Local.sTemp, <>, "")
+	F.Intrinsic.String.Build("Update GCG_4844_Web_Import Set TAX_SALES_EX_NO = '{0}' Where Customer = '{1}'", V.Local.sTemp,  V.Local.sCust,V.Local.ssql)
+	F.ODBC.Connection!con.Execute(V.Local.ssql)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Form_Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.GsGridCust_RowCellClick.End
+
+Program.Sub.Form3_UnLoad.Start
+Gui.Form3..Visible(False)
+Program.Sub.Form3_UnLoad.End
+
+Program.Sub.SHIP_TO.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+V.Local.fTemp.Declare(Float, 0)
+V.Local..BulkDeclareString(sTemp, sData, sDataAll, sFile, sFilter)
+V.Local.bEx.Declare(Boolean, False)
+
+V.Local..BulkDeclareLong(iC, iSEQ, iCUST)
+
+'add column for the sequence
+F.Data.DataTable.AddColumn("SHIPADDLTemp", "SHIP_SEQ", "String")
+F.Data.Dictionary.CreateFromSQL("dict", "con", "Select rTrim(Customer) As Customer, Max(Ship_Seq) As Ship_Seq From OE_Multi_Ship Group by Customer Order by Customer")
+F.Data.Dictionary.SetDefaultReturn("dict", "000000")
+F.Data.DataTable.FillFromDictionary("SHIPADDLTemp", "dict", "Customer", "SHIP_SEQ")
+F.Data.Dictionary.Close("dict")
+
+'Create View
+F.Data.DataView.Create("SHIPADDLTemp", "SHIPADDLTemp_V")
+'distinct customers
+Function.Data.DataView.ToDataTableDistinct("SHIPADDLTemp", "SHIPADDLTemp_V",  "CUST","Customer")
+
+'loop through CUST and create a View from SHIPADDLTemp_V based on customer
+
+F.Intrinsic.Control.For(V.Local.iCUST, 0, V.DataTable.CUST.RowCount--, 1)
+	F.Intrinsic.Control.If(V.DataTable.SHIPADDL.Exists)
+		F.Data.DataTable.Close("SHIPADDL")
+	F.Intrinsic.Control.EndIf
+	'filter view based on customer
+	F.Intrinsic.String.Build("[Customer] = '{0}'", V.DataTable.CUST(V.Local.iCUST).Customer!FieldValTrim, V.Local.sFilter)
+	F.Data.DataView.SetFilter("SHIPADDLTemp", "SHIPADDLTemp_V", V.Local.sFilter)
+	Function.Data.DataView.ToDataTableDistinct("SHIPADDLTemp", "SHIPADDLTemp_V", "SHIPADDL","Customer*!*ShippingCompany*!*SFirstName*!*SLastName*!*SAddress1*!*SAddress2*!*SCity*!*SState*!*SZip*!*SCountry*!*SHIP_SEQ", TRUE)
+	'set the sequence variable
+	V.Local.iSEQ.Set(V.DataTable.SHIPADDL(0).SHIP_SEQ!FieldValTrim)
+	F.Intrinsic.Control.For(V.Local.iC, 0, V.DataTable.SHIPADDL.RowCount--, 1)
+	
+		'customer
+		V.Local.sTemp.Set(V.DataTable.SHIPADDL(V.Local.iC).Customer!FieldValTrim)
+		F.Intrinsic.String.RPad(V.Local.sTemp, " ", 6, V.Local.sTemp)
+		V.Local.sData.Set(V.Local.sTemp)
+		'NAME aka Sequence""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+		'V.Local.fTemp.Set(V.DataTable.SHIPADDL(V.Local.iC).SHIP_SEQ!FieldValTrim)
+		F.Intrinsic.Math.Add(V.Local.iSEQ, 1, V.Local.iSEQ)
+		F.Intrinsic.String.LPad(V.Local.iSEQ, "0", 6, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}", V.Local.sData, V.Local.sTemp, V.Local.sData)
+		'ship name
+		V.Local.sTemp.Set(V.DataTable.SHIPADDL(V.Local.iC).ShippingCompany!FieldValStringPSQLFriendly)
+		F.Intrinsic.String.RPad(V.Local.sTemp, " ", 30, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}", V.Local.sData, V.Local.sTemp, V.Local.sData)
+		'address 1
+		V.Local.sTemp.Set(V.DataTable.SHIPADDL(V.Local.iC).SAddress1!FieldValStringPSQLFriendly)
+		F.Intrinsic.String.RPad(V.Local.sTemp, " ", 30, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}", V.Local.sData, V.Local.sTemp, V.Local.sData)
+		'address 2
+		V.Local.sTemp.Set(V.DataTable.SHIPADDL(V.Local.iC).SAddress2!FieldValStringPSQLFriendly)
+		F.Intrinsic.String.RPad(V.Local.sTemp, " ", 30, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}", V.Local.sData, V.Local.sTemp, V.Local.sData)
+		
+		F.Intrinsic.Control.If(V.DataTable.SHIPADDL(V.Local.iC).SCountry!FieldValStringPSQLFriendly, <>, "USA")
+		
+			'address 3
+			'V.Local.sTemp.Set(V.DataTable.SHIPADDL(V.Local.iC).Address_3__c!FieldValStringPSQLFriendly)
+			V.Local.sTemp.Set("")
+			F.Intrinsic.String.RPad(V.Local.sTemp, " ", 30, V.Local.sTemp)
+			F.Intrinsic.String.Build("{0}{1}", V.Local.sData, V.Local.sTemp, V.Local.sData)
+			'address 4 city and state
+			F.Intrinsic.String.Build("{0}   {1}", V.DataTable.SHIPADDL(V.Local.iC).SCity!FieldValStringPSQLFriendly, V.DataTable.SHIPADDL(V.Local.iC).SState!FieldValStringPSQLFriendly, V.Local.sTemp)
+
+			F.Intrinsic.String.RPad(V.Local.sTemp, " ", 30, V.Local.sTemp)
+			F.Intrinsic.String.Build("{0}{1}", V.Local.sData, V.Local.sTemp, V.Local.sData)
+			'address 5 country and zip
+			F.Intrinsic.String.Build("{0}   {1}", V.DataTable.SHIPADDL(V.Local.iC).SCountry!FieldValStringPSQLFriendly, V.DataTable.SHIPADDL(V.Local.iC).SZip!FieldValStringPSQLFriendly, V.Local.sTemp)
+			F.Intrinsic.String.RPad(V.Local.sTemp, " ", 30, V.Local.sTemp)
+			F.Intrinsic.String.Build("{0}{1}", V.Local.sData, V.Local.sTemp, V.Local.sData)
+		
+		F.Intrinsic.Control.Else
+			V.Local.sTemp.Set("")
+			F.Intrinsic.String.RPad(V.Local.sData, " ",192, V.Local.sData)
+		F.Intrinsic.Control.EndIf
+		'city
+		V.Local.sTemp.Set(V.DataTable.SHIPADDL(V.Local.iC).SCity!FieldValStringPSQLFriendly)
+		F.Intrinsic.String.RPad(V.Local.sTemp, " ", 15, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}", V.Local.sData, V.Local.sTemp, V.Local.sData)
+		'state
+		V.Local.sTemp.Set(V.DataTable.SHIPADDL(V.Local.iC).SState!FieldValStringPSQLFriendly)
+		F.Intrinsic.String.RPad(V.Local.sTemp, " ", 2, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}", V.Local.sData, V.Local.sTemp, V.Local.sData)
+		'zip
+		V.Local.sTemp.Set(V.DataTable.SHIPADDL(V.Local.iC).SZip!FieldValTrim)
+		F.Intrinsic.String.RPad(V.Local.sTemp, " ", 13, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}", V.Local.sData, V.Local.sTemp, V.Local.sData)
+		'country
+		V.Local.sTemp.Set(V.DataTable.SHIPADDL(V.Local.iC).SCountry!FieldValTrim)
+		F.Intrinsic.String.RPad(V.Local.sTemp, " ", 12, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}", V.Local.sData, V.Local.sTemp, V.Local.sData)
+		'attention
+		'V.Local.sTemp.Set(V.DataTable.SHIPADDL(V.Local.iC).attention__c!FieldValStringPSQLFriendly)
+		V.Local.sTemp.Set("")
+		F.Intrinsic.String.RPad(V.Local.sTemp, " ", 30, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}", V.Local.sData, V.Local.sTemp, V.Local.sData)
+		'international flag
+		F.Intrinsic.Control.If(V.DataTable.SHIPADDL(V.Local.iC).SCountry!FieldValStringPSQLFriendly, <>, "USA")
+			V.Local.sTemp.Set("Y")
+		F.Intrinsic.Control.Else
+			V.Local.sTemp.Set("N")
+		F.Intrinsic.Control.EndIf
+		F.Intrinsic.String.Build("{0}{1}", V.Local.sData, V.Local.sTemp, V.Local.sData)
+		'phone
+		F.Intrinsic.String.RPad(V.Local.sData, " ", 385, V.Local.sData)
+		V.Local.sTemp.Set("")
+		F.Intrinsic.String.RPad(V.Local.sTemp, " ", 13, V.Local.sTemp)
+		F.Intrinsic.String.Build("{0}{1}", V.Local.sData, V.Local.sTemp, V.Local.sData)
+		'fax
+		F.Intrinsic.String.RPad(V.Local.sData, " ", 398, V.Local.sData)
+		V.Local.sTemp.Set("")
+		F.Intrinsic.String.RPad(V.Local.sData, " ", 484, V.Local.sData)
+		'F.Intrinsic.String.Build("{0}{1}", V.Local.sData, V.Local.sTemp, V.Local.sData)
+		'add to sData new line
+		Function.Intrinsic.Control.If(V.Local.sDataAll, =, "")
+			F.Intrinsic.String.Build("{0}{1}", V.Local.sData, V.Ambient.NewLine, V.Local.sDataAll)
+		Function.Intrinsic.Control.Else
+			F.Intrinsic.String.Build("{0}{1}{2}", V.Local.sDataAll,V.Local.sData, V.Ambient.NewLine, V.Local.sDataAll)
+		Function.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.Next(V.Local.iC)
+F.Intrinsic.Control.Next(V.Local.iCUST)	
+
+F.Intrinsic.String.Build("{0}\SHIPTOIN.TXT",V.Caller.FilesDir,V.Local.sFile)
+	F.Intrinsic.File.Exists(V.Local.sFile,V.Local.bEx)
+	Function.Intrinsic.Control.If(V.Local.bEx,=,True)
+		F.Intrinsic.File.DeleteFile(V.Local.sFile)
+	Function.Intrinsic.Control.EndIf
+F.Intrinsic.File.String2File(V.Local.sFile,V.Local.sDataAll)
+F.Intrinsic.String.Build("{0}{1}", V.Caller.CompanyCode, "UPLSHPTO",V.Local.sTemp)
+Function.Global.General.CallWrapperSync(50, "UPLSHPTO/U")
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Form_Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.SHIP_TO.End
+
+Program.Sub.Check_Ship_To.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+'check if SHIPADDLTemp exists
+F.Intrinsic.Control.If(V.DataTable.SHIPADDLTemp.Exists)
+	F.Data.DataTable.Close("SHIPADDLTemp")
+F.Intrinsic.Control.EndIf
+
+'select to view where select = 'True', 
+F.Data.DataView.Create("TB", "T_ShipTo", 22, "[Select] = 'TRUE'", "" )
+
+'Create a new column to match ship address
+F.Data.DataTable.AddColumn("TB", "ADDRESS1", "String")
+F.Data.DataTable.AddExpressionColumn("TB", "CustAddr", "String", "TRIM([Customer])+'-'+TRIM([sAddress1])")
+
+'check if the ship to address 1 exists in customer master
+F.Data.Dictionary.CreateFromSQL("dict", "con", "Select UPPER( rTrim(Customer)+'-'+rTrim(ADDRESS1)) As CustAddr, rTrim(ADDRESS1) As ADDRESS1  From CUSTOMER_MASTER Where REC = '3'")
+F.Data.Dictionary.SetDefaultReturn("dict", "")
+F.Data.DataTable.FillFromDictionary("TB", "dict", "CustAddr", "ADDRESS1")
+F.Data.Dictionary.Close("dict")
+
+' check if the ship to address 1 exists in OE MULTI SHIP
+F.Data.Dictionary.CreateFromSQL("dict", "con", "Select  rTrim(Customer)+'-'+rTrim(SHIP_ADDRESS1) As CustAddr,  rTrim(SHIP_ADDRESS1) As ADDRESS1  From OE_MULTI_SHIP")
+F.Data.Dictionary.SetDefaultReturn("dict", "")
+F.Data.DataTable.FillFromDictionary("TB", "dict", "CustAddr", "ADDRESS1")
+F.Data.Dictionary.Close("dict") 
+
+'filter where there is not a match
+Function.Data.DataView.SetFilter("TB", "T_ShipTo", "[ADDRESS1] = '' AND [Select] = 'TRUE'")
+'Create datatable
+Function.Data.DataView.ToDataTableDistinct("TB", "T_ShipTo", "SHIPADDLTemp","Customer*!*ShippingCompany*!*SFirstName*!*SLastName*!*SAddress1*!*SAddress2*!*SCity*!*SState*!*SZip*!*SCountry", TRUE)
+
+Function.Data.DataView.Close("TB", "T_ShipTo")
+F.Data.DataTable.RemoveColumn("TB","ADDRESS1")
+F.Data.DataTable.RemoveColumn("TB","CustAddr")
+
+F.Intrinsic.Control.CallSub(SHIP_TO)
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Form_Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.Check_Ship_To.End
+
+Program.Sub.Carrier.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+V.Local.ssql.Declare(String, "")
+V.Local.sRet.Declare(String, "")
+V.Local.sDisc.Declare(String, "")
+V.Local.iC.Declare(Long, 0)
+V.Local.iDis.Declare(Long, 0)
+
+'select to view where select = 'True', 
+F.Data.DataView.Create("TB", "T_Selected", 22, "[Select] = 'TRUE'", "" )
+F.Data.DataView.ToDataTable("TB","T_Selected","DT_Selected")
+
+'carrier, service type, via
+F.Data.DataTable.CreateFromSQL( "Carrier", "con", "Select rTrim(CARRIER_CD) as CarrierCodes, MAX(SRVC_TYPE) As SRVC_TYPE, MAX(VIA) as VIA From OE_CARRIER  Where VIA  <> '' Group by CARRIER_CD")
+F.Data.LInq.Join("LeftJoin", "datatable", "DT_Selected*!*DT_Selected", "datatable", "Carrier*!*C", "DT_Selected.CarrierCodes=C.CarrierCodes", "DT_Selected.sState*!*DT_Selected.Creditcardtype*!*DT_Selected.TAX_SALES_EX_NO*!*DT_Selected.Select*!*DT_Selected.ORDER_Core*!*DT_Selected.CarrierCodes*!*C.SRVC_TYPE*!*C.VIA", "DT_Selected.Select = 'TRUE' ", "", "", "TBC", True )
+
+'ship via
+F.Data.DataTable.CreateFromSQL( "Via", "con", "Select rTrim(ID) as VIA, rTrim(Message) as ShipVia2 From SHIP_VIA")
+F.Data.LInq.Join("LeftJoin", "datatable", "TBC*!*TBC", "datatable", "Via*!*V", "TBC.VIA=V.VIA", "TBC.sState*!*TBC.Creditcardtype*!*TBC.TAX_SALES_EX_NO*!*TBC.Select*!*TBC.ORDER_Core*!*TBC.CarrierCodes*!*TBC.SRVC_TYPE*!*TBC.VIA*!*V.ShipVia2", "", "", "", "TBCV", True )
+
+'order number
+F.Data.DataTable.CreateFromSQL( "Order", "con", "Select rtrim(ORDER_NO) As ORDER_NO, rTrim(CUSTOMER_PO) As CUSTOMER_PO From ORDER_HEADER  Where  RECORD_TYPE = 'A' ")
+F.Data.LInq.Join("LeftJoin", "datatable", "TBCV*!*TBCV", "datatable", "Order*!*O", "TBCV.ORDER_Core=O.CUSTOMER_PO", "TBCV.sState*!*TBCV.Creditcardtype*!*TBCV.TAX_SALES_EX_NO*!*TBCV.Select*!*TBCV.ORDER_Core*!*TBCV.CarrierCodes*!*TBCV.SRVC_TYPE*!*TBCV.VIA*!*TBCV.ShipVia2*!*O.ORDER_NO", "", "", "", "TBCVO", True )
+
+'discount
+F.Intrinsic.Control.For(V.Local.iC, 0, V.DataTable.TBCVO.RowCount--,1)
+	F.Intrinsic.String.Build("Select SKU , PercentDiscount from GCG_4844_Web_Import Where ORDER_Core = '{0}'", V.DataTable.TBCVO(V.Local.iC).ORDER_Core!Fieldvaltrim, V.Local.ssql)
+	F.ODBC.Connection!con.ExecuteAndReturn(V.Local.ssql, V.Local.sRet)
+	F.Intrinsic.String.Split(V.Local.sRet, "#$#", V.Local.sRet)
+	
+	F.Intrinsic.Control.For(V.Local.iDis, 0, V.Local.sRet.UBound, 1)
+		F.Intrinsic.String.Split(V.Local.sRet(V.Local.iDis), "*!*", V.Local.sDisc)
+		F.Intrinsic.String.Build("Update ORDER_LINES Set Discount = '{0}' Where ORDER_NO = '{1}' And PART = '{2}' ", V.Local.sDisc(1), V.DataTable.TBCVO(V.Local.iC).ORDER_NO!Fieldvaltrim, V.Local.sDisc(0), V.Local.ssql)
+		F.ODBC.Connection!con.Execute(V.Local.ssql)
+	F.Intrinsic.Control.Next(V.Local.iDis)
+	'DRH 8/16/2018 update order header FLAG_TIME_MATL
+	F.Intrinsic.String.Build("Update ORDER_HEADER Set FLAG_TIME_MATL = 'N' Where ORDER_NO = '{0}'", V.DataTable.TBCVO(V.Local.iC).ORDER_NO!Fieldvaltrim, V.Local.ssql)
+	F.ODBC.Connection!con.Execute(V.Local.ssql)
+F.Intrinsic.Control.Next(V.Local.iC)
+
+'DRH 8/16/2018 update order lines with INFO_1 and PART_PRICE_CODE
+F.Data.DataTable.CreateFromSQL( "LINES", "con", "Select Order_NO, RECORD_NO, rTrim(PART) As PART From ORDER_LINES where RECORD_TYPE = 'L' And RECORD_NO <> '8000' ")
+F.Data.DataTable.CreateFromSQL( "INV2", "con", "Select rTrim(PART) As PART, TEXT_INFO1, PART_PRICE_CODE From INVENTORY_MST2")
+F.Data.LInq.Join("LeftJoin", "datatable", "TBCVO*!*T", "datatable", "LINES*!*L", "T.ORDER_NO=L.ORDER_NO", "datatable", "INV2*!*INV2", "L.PART=INV2.PART"  ,"T.ORDER_NO*!*L.RECORD_NO*!*L.PART*!*INV2.TEXT_INFO1*!*INV2.PART_PRICE_CODE", "", "", "", "PPC", True )
+F.Intrinsic.Control.For(V.Local.iC, 0, V.DataTable.PPC.RowCount--,1)
+	F.Intrinsic.String.Build("Update ORDER_LINES Set INFO_1 = '{0}', PART_PRICE_CODE = '{1}' Where ORDER_NO = '{2}' And RECORD_NO = '{3}'", V.DataTable.PPC(V.Local.iC).TEXT_INFO1!Fieldvaltrim, V.DataTable.PPC(V.Local.iC).PART_PRICE_CODE!Fieldvaltrim,V.DataTable.PPC(V.Local.iC).ORDER_NO!Fieldvaltrim,V.DataTable.PPC(V.Local.iC).RECORD_NO!Fieldvaltrim,V.Local.ssql)
+	F.ODBC.Connection!con.Execute(V.Local.ssql)
+F.Intrinsic.Control.Next(V.Local.iC)
+
+'terms and 'Save taxes back to the table
+F.Intrinsic.Control.For(V.Local.iC, 0, V.DataTable.TBCVO.RowCount--,1)
+	F.Intrinsic.String.Build("Update ORDER_HEADER Set Carrier_Acct = '{0}' Where Order_NO = '{1}' And RECORD_TYPE = 'A'", V.DataTable.TBCVO(V.Local.iC).CarrierCodes!Fieldvaltrim,V.DataTable.TBCVO(V.Local.iC).Order_NO!Fieldvaltrim, V.Local.ssql)
+	Function.ODBC.Connection!con.Execute(V.Local.ssql)
+	F.Intrinsic.String.Build("Update ORDER_HEADER Set Carrier_Acct = '{0}' Where Order_NO = '{1}' And RECORD_TYPE = 'C'", V.DataTable.TBCVO(V.Local.iC).CarrierCodes!Fieldvaltrim,V.DataTable.TBCVO(V.Local.iC).Order_NO!Fieldvaltrim, V.Local.ssql)
+	Function.ODBC.Connection!con.Execute(V.Local.ssql)
+	F.Intrinsic.String.Build("Update ORDER_HEADER  SET TERMS = '{0}', SRVC_TYPE = '{1}', SHIP_VIA = '{2}'  Where Order_NO = '{3}' And Record_NO = '  A'", V.DataTable.TBCVO(V.Local.iC).Creditcardtype!Fieldvaltrim, V.DataTable.TBCVO(V.Local.iC).SRVC_TYPE!Fieldvaltrim,V.DataTable.TBCVO(V.Local.iC).ShipVia2!Fieldvaltrim, V.DataTable.TBCVO(V.Local.iC).Order_NO!Fieldvaltrim, V.Local.ssql)
+	F.ODBC.Connection!con.Execute(V.Local.ssql)
+	F.Intrinsic.String.Build("Update ORDER_HEADER  SET SRVC_TYPE = '{0}', SHIP_VIA = '{1}' Where Order_NO = '{2}' And Record_NO = '  C'", V.DataTable.TBCVO(V.Local.iC).SRVC_TYPE!Fieldvaltrim,V.DataTable.TBCVO(V.Local.iC).ShipVia2!Fieldvaltrim, V.DataTable.TBCVO(V.Local.iC).Order_NO!Fieldvaltrim, V.Local.ssql)
+	F.ODBC.Connection!con.Execute(V.Local.ssql)
+'	F.Intrinsic.Control.If(V.DataTable.TBCVO(V.Local.iC).sState!Fieldvaltrim, =, "TN", "AND", V.DataTable.TBCVO(V.Local.iC).TAX_SALES_EX_NO!Fieldvaltrim, =, "")
+'		F.Intrinsic.String.Build("Update ORDER_HEADER Set TAX_STATE = 'TN', TAX_1 = 'DAV',TAX_2 = 'TN',TAX_SOURCE = 'M',FLAG_TIME_MATL = 'N', TAX_ZONE_1 = '', TAX_ZONE_2 = '',TAX_APPLY_1 = 'Y', TAX_APPLY_2 = 'Y' Where Order_NO = '{0}' And Record_Type <> 'B' ",  V.DataTable.TBCVO(V.Local.iC).Order_NO!Fieldvaltrim, V.Local.ssql)
+'		F.ODBC.Connection!con.Execute(V.Local.ssql)
+'		F.Intrinsic.String.Build("Update Order_Lines Set TAX_SOURCE = 'M', TAX_1 = 'DAV', TAX_2 = 'TN', TAX_ZONE_1 = 'TN', TAX_ZONE_2 = 'TN',Flag_Tax_status = 'T',TAX_APPLY_1 = 'Y',TAX_APPLY_2 = 'Y'  Where Order_NO = '{0}' And record_TYPE = 'L'", V.DataTable.TBCVO(V.Local.iC).Order_NO!Fieldvaltrim, V.Local.ssql)
+'		F.ODBC.Connection!con.Execute(V.Local.ssql)
+'	F.Intrinsic.Control.EndIf
+	'delete files
+	F.Intrinsic.String.Build("Delete From GCG_4844_Web_Import Where ORDER_Core = '{0}'", V.DataTable.TBCVO(V.Local.iC).ORDER_Core!FieldValTrim, V.Local.ssql)
+	F.ODBC.Connection!con.Execute(V.Local.ssql)
+F.Intrinsic.Control.Next(V.Local.iC)
+
+
+F.Data.DataTable.Close("PPC")
+F.Data.DataTable.Close("Carrier")
+F.Data.DataTable.Close("Via")
+F.Data.DataTable.Close("Lines")
+F.Data.DataTable.Close("INV2")
+F.Data.DataTable.Close("Order")
+F.Data.DataTable.Close("TBC")
+F.Data.DataTable.Close("TBCV")
+F.Data.DataTable.Close("TBCVO")
+
+'Function.Intrinsic.UI.ChangeWaitStatus ("Creating Orders...", 75)
+F.Intrinsic.UI.CloseWaitDialog
+'refresh dashboard
+F.Intrinsic.Control.CallSub("cmdRefresh_Click")
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Form_Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.Carrier.End
+
+Program.Sub.Comments.Start
+${$0$}$$}$$}$12:00:00 AM$}$False
+Program.Sub.Comments.End
