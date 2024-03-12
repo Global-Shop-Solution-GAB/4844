@@ -1,0 +1,160 @@
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+'DRH 2/21/20018
+'This will populate #14350 the new customer screen with data from the dashboard and post save will save the email #14385
+'Customer Master
+
+F.ODBC.Connection!con.OpenConnection(v.Ambient.PDSN,v.Ambient.PUser,v.Ambient.PPass) 
+
+'hook # 14350 caller switch = N
+F.Intrinsic.Control.If(V.Caller.Hook, =, "14350", "And", V.Caller.Switches, =, "N")
+	F.Intrinsic.Control.CallSub(14350)
+F.Intrinsic.Control.ElseIf(V.Caller.Hook, =, "14385", "And", V.Caller.Switches, =, "N")
+	F.Intrinsic.Control.CallSub(14385)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.14350.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+V.Local..BulkDeclareString(sRet, sTemp)
+V.Local.iInt.Declare(Long)
+
+'hook # 14350 caller switch = N
+F.ODBC.Connection!con.ExecuteAndReturn("Select * From GCG_4844_Customer Where KEY_ID = '1'", V.Local.sRet)
+F.Intrinsic.Control.If(V.Local.sRet, <>, "")
+	F.Intrinsic.String.Split(V.Local.sRet, "*!*", V.Local.sRet)
+	'bill to and ship to attention:
+	F.Intrinsic.String.Build("{0} {1}", V.Local.sRet(18).Trim, V.Local.sRet(19).Trim, V.Local.sTemp)
+	V.Passed.000021.Set(V.Local.sTemp)
+	F.Intrinsic.String.Build("{0} {1}", V.Local.sRet(20).Trim, V.Local.sRet(21).Trim, V.Local.sTemp)
+	V.Passed.000056.Set(V.Local.sTemp)
+	'customer
+	V.Passed.000002.Set(V.Local.sRet(17).Trim)
+	'billing name
+	V.Passed.000005.Set(V.Local.sRet(1).Trim)
+	'billing zip
+	V.Passed.000013.Set(V.Local.sRet(6).Trim)
+	'billing County
+	V.Passed.000017.Set(V.Local.sRet(7).Trim)
+	'shipping name
+	V.Passed.000006.Set(V.Local.sRet(10).Trim)
+	'shipping zip
+	V.Passed.000023.Set(V.Local.sRet(15).Trim)
+	'billing address 1
+	V.Passed.000007.Set(V.Local.sRet(2).Trim)
+	'shipping address 1
+	V.Passed.000008.Set(V.Local.sRet(11).Trim)
+	'blling address 2
+	V.Passed.000009.Set(V.Local.sRet(3).Trim)
+	'shipping address 2
+	V.Passed.000010.Set(V.Local.sRet(12).Trim)
+	'shipping country 2""""""""
+	V.Passed.000047.Set(V.Local.sRet(16).Trim)
+	
+	'check if ship to country = 'USA', create international if not
+	F.Intrinsic.Control.If(V.Local.sRet(16),<>, "USA")
+		'shipping international
+		V.Passed.000057.Set("Y")
+		' ship address 4
+		F.Intrinsic.String.Build("{0}	{1}", V.Local.sRet(13), V.Local.sRet(14), V.Local.sTemp)
+		V.Passed.000015.Set(V.Local.sTemp)
+		' ship address 5
+		F.Intrinsic.String.Build("{0}	{1}", V.Local.sRet(16), V.Local.sRet(15), V.Local.sTemp)
+		V.Passed.000016.Set(V.Local.sTemp)
+	F.Intrinsic.Control.EndIf
+	
+	'shipping city
+	V.Passed.000019.Set(V.Local.sRet(13))
+	'shipping state
+	V.Passed.000020.Set(V.Local.sRet(14))
+	
+	F.Intrinsic.Control.If(V.Local.sRet(7),<>, "USA")
+		'billing international
+		V.Passed.000055.Set("Y")
+		' billing address 4
+		F.Intrinsic.String.Build("{0}	{1}", V.Local.sRet(4), V.Local.sRet(5), V.Local.sTemp)
+		V.Passed.000045.Set(V.Local.sTemp)
+		'billing address 5
+		F.Intrinsic.String.Build("{0}	{1}", V.Local.sRet(7), V.Local.sRet(6), V.Local.sTemp)
+		V.Passed.000046.Set(V.Local.sTemp)
+	F.Intrinsic.Control.EndIf	
+	
+	'billing city
+	V.Passed.000011.Set(V.Local.sRet(4))
+	'billing state
+	V.Passed.000012.Set(V.Local.sRet(5))
+	
+	F.Intrinsic.Control.If(V.Local.sRet(7),<>,"USA")
+		'Ship To International Phone Number
+		V.Passed.000088.Set(V.Local.sRet(9))
+		'Bill To International Phone Number
+		V.Passed.000093.Set(V.Local.sRet(9))
+	F.Intrinsic.Control.Else
+		'need to split the phone
+		F.Intrinsic.String.Left(V.Local.sRet(9), 3, V.Local.sTemp)
+		V.Passed.000025.Set(V.Local.sTemp)
+		F.Intrinsic.String.Mid(V.Local.sRet(9), 4, 3,V.Local.sTemp)
+		V.Passed.000026.Set(V.Local.sTemp)
+		F.Intrinsic.String.Right(V.Local.sRet(9), 4, V.Local.sTemp)
+		V.Passed.000027.Set(V.Local.sTemp)		
+	F.Intrinsic.Control.EndIf
+
+	'Allow Shipping Hold to be Modified at the Order Level
+	V.Passed.000097.Set("Y")
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.14350.End
+
+Program.Sub.14385.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+V.Local..BulkDeclareString(ssql, sRet)
+F.ODBC.Connection!con.ExecuteAndReturn("Select Top 1 Customer, Email From GCG_4844_Customer", V.Local.sRet)
+F.Intrinsic.Control.If(V.Local.sRet, <>, "")
+	F.Intrinsic.String.Split(V.Local.sRet, "*!*", V.Local.sRet)
+	F.Intrinsic.String.Build("Update CUSTOMER_SALES Set Email = '{0}' Where Customer = '{1}' And REC = '2'", V.Local.sRet(1), V.Local.sRet(0), V.Local.ssql)
+	F.ODBC.Connection!con.Execute(V.Local.ssql)
+F.Intrinsic.Control.EndIf
+
+'then delete the line
+F.ODBC.Connection!con.Execute("Delete From GCG_4844_Customer")
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.CallSub(Unload)
+F.Intrinsic.Control.EndTry
+Program.Sub.14385.End
+
+Program.Sub.Unload.Start
+F.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+F.ODBC.Connection!con.Close
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: GCG_4844_Web_Importer_Dash: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.CurrentSubroutine, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    Function.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.Unload.End
